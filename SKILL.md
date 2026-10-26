@@ -15,7 +15,7 @@ Black-box audit of an OpenAI-compatible chat endpoint. Combine independent signa
 
 ## Workflow
 1. **Key handling:** pass the key only via env `LLM_API_KEY`; never write it to files, reports or memory. Remind the user to rotate a key that was pasted into chat.
-2. **List models:** `curl -s $BASE/models -H "Authorization: Bearer $KEY"` to get the exact model id.
+2. **List models:** `curl -s $BASE/models -H "Authorization: Bearer $KEY"` to get the exact model ids. If the channel exposes several models, audit **every** one (run the script once per model; `--records 0` is acceptable for secondary models, run the full long-context check on the main one) so the final reply can state authenticity per model.
 3. **Run the audit** (bundled script, stdlib only):
 ```bash
 LLM_API_KEY=sk-... python ~/.claude/skills/testing-llm-endpoint-authenticity/scripts/model_audit.py \
@@ -23,7 +23,8 @@ LLM_API_KEY=sk-... python ~/.claude/skills/testing-llm-endpoint-authenticity/scr
   --identity-regex "Kimi|Moonshot|月之暗面" \
   --fact "Kimi K2 总参数和激活参数？::1T|1万亿.*32B" --out report.json
 ```
-4. **Report** score, verdict, per-check notes, and caveats (below). Lead with the verdict.
+4. **Extra checks** (manual, not in the script score): Channel Provenance, Thinking Effort Lock, Hidden System Prompt Injection (sections below).
+5. **Reply** in the fixed Final Reply Format (below). Put detailed numbers in a report file only when the user asks.
 
 ## Signals and Weights
 | Check | Weight | Passes when |
@@ -38,6 +39,40 @@ LLM_API_KEY=sk-... python ~/.claude/skills/testing-llm-endpoint-authenticity/scr
 | Error format | 5 | JSON `error` body on empty messages and unknown model |
 
 Scores renormalize over applicable checks and are capped at 98 (black-box cannot prove authenticity). Bands: >=90 highly credible, 75-89 mostly credible (check downgrade), 60-74 doubtful, <60 likely fake.
+
+## Channel Score (the 0-100 shown to the user)
+`channel score = 0.7 x authenticity + 0.3 x performance`, then deductions, floor 0, round to integer.
+- authenticity: script `score`, averaged over all audited models.
+- performance: script `performance` (success rate 40, stream TTFB 30 [<=3s full, >=15s zero], output speed 30 [>=30 tok/s full, <=5 zero]). Reported separately from the authenticity score.
+- deductions: hidden system prompt injection found -5; mixed/inconsistent upstreams -5; claimed channel not confirmed -5; a model judged fake -10.
+The weights and deductions are empirical; keep them stable across runs so scores are comparable.
+
+## Channel Provenance (is the channel what it claims?)
+Judge the channel against what the user says it is (official, AWS Bedrock, Google Vertex, Azure, reseller pool...). If no claim is given, compare against "official first-party". Output is only 真/假.
+Evidence:
+- Vendor headers: `anthropic-ratelimit-*`, `x-amzn-requestid` / `x-amzn-bedrock-*`, `x-goog-*` / `x-vertex-*`, `msh-*`, `x-ds-*`, `openai-organization`.
+- Response `id` prefix and shape: Anthropic `msg_`, Bedrock `msg_bdrk_`, Vertex `msg_vrtx_`; empty `id` / `created:0` means the relay answered itself or mixed backends.
+- Error fingerprint style: Bedrock `ValidationException`, Vertex `google.rpc` / `INVALID_ARGUMENT`, Anthropic `{"type":"error"}`, OpenAI `invalid_request_error` (use `error_probe.py`).
+- Model-id naming and `/models` `owned_by`.
+Rule: evidence contradicts the claim -> 假. No contradiction and at least one positive proof -> 真. No contradiction but no proof -> 真 with the note "无官方样本对照". Relay brand markers (new-api, sub2api, LiteLLM) are not contradictions by themselves unless the channel claims to be first-party.
+
+## Thinking Effort Lock (manual, not scored; goes into the notes)
+For a reasoning model, send the same multi-step question twice with `reasoning_effort` = `low` and `high` (or the model's own switch, e.g. `thinking`) and compare `reasoning_tokens` / `reasoning_content` length. Nearly identical -> the upstream locks the thinking level; say which level it appears fixed at. No `reasoning_content` at all on a reasoning model -> reasoning stripped or hidden.
+
+## Final Reply Format (mandatory)
+The user-facing reply is exactly these four lines, in formal Chinese, no other sections, no tables, never the key:
+```
+渠道评分：76/100
+模型真伪：真（<model-1>：真；<model-2>：假）
+渠道真伪：真（<识别出的渠道类型>）
+注释：①…；②…
+```
+Rules:
+- 真/假 only; "most likely genuine" counts as 真. List every upstream model of the channel with its own verdict.
+- 渠道真伪 must name the identified channel type in parentheses, e.g. 官方直连 / AWS Bedrock / Google Vertex / new-api 中转 / sub2api 订阅转 API 网关 / 未知中转; for a 假 verdict state what it actually looks like (e.g. 假（声称 Bedrock，实为 new-api 中转））.
+- 注释: at most 4 items, one short sentence each, ordered by impact on the user. Typical items: injected system prompt, locked thinking effort, mixed or unstable upstreams, missing vendor headers / no official reference, abnormal latency, leaked account info, key should be rotated.
+- No raw numbers, check tables or hedging in the reply; keep the numbers for a detailed report that is written only on request. Express residual uncertainty in one note ("无官方样本对照").
+- Concise, explicit, written for non-technical users.
 
 ## Common Mistakes
 - **HTTP 403 `error code: 1010`:** Cloudflare blocks Python's default User-Agent; the script sends a curl UA. Use the same in ad-hoc calls.
@@ -75,4 +110,4 @@ How to probe (send NO system prompt of your own):
 3. **Extraction attempt (weak evidence):** ask the model to print everything before the message, or reply `NONE` if nothing. Refusal with no system prompt sent hints at injection, but models also refuse by habit (official DeepSeek does), so never decide on this alone.
 4. **Short-circuit/mixed backends:** bare `hi` may return `id:""`, `created:0`, 0 completion tokens (relay answering itself or a different channel); note it, and compare behavior across prompts.
 
-Judge by combining at least two signals; reasoning leakage is the most discriminating one (official endpoints showed 0/2, the injected relay 2/2). Always compare against a known-clean reference if available (e.g. the official API of the same vendor). Report the numbers, not just the conclusion.
+Judge by combining at least two signals; reasoning leakage is the most discriminating one (official endpoints showed 0/2, the injected relay 2/2). Always compare against a known-clean reference if available (e.g. the official API of the same vendor). Keep the numbers in the detailed report; the final reply only states the conclusion as a note.

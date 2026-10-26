@@ -34,12 +34,12 @@ def http(url, key, body, stream=False, timeout=240):
                 if ttfb is None:
                     ttfb = time.time() - t
                 raw.append(line.decode("utf-8", "replace"))
-            return r.status, hdr, "".join(raw), time.time() - t
-        return r.status, hdr, json.loads(r.read().decode("utf-8")), time.time() - t
+            return r.status, hdr, "".join(raw), time.time() - t, ttfb
+        return r.status, hdr, json.loads(r.read().decode("utf-8")), time.time() - t, None
     except urllib.error.HTTPError as e:
-        return e.code, {k.lower(): v for k, v in e.headers.items()}, e.read().decode("utf-8", "replace"), time.time() - t
+        return e.code, {k.lower(): v for k, v in e.headers.items()}, e.read().decode("utf-8", "replace"), time.time() - t, None
     except Exception as e:
-        return -1, {}, str(e), time.time() - t
+        return -1, {}, str(e), time.time() - t, None
 
 
 class Audit:
@@ -47,13 +47,20 @@ class Audit:
         self.a, self.key = a, os.environ["LLM_API_KEY"]
         self.url = a.base.rstrip("/") + a.path
         self.checks, self.notes, self.headers = [], [], {}
+        self.calls, self.ttfbs, self.speeds = [], [], []  # performance samples (not part of the authenticity score)
 
     def chat(self, messages, **kw):
         body = {"model": self.a.model, "messages": messages, "max_tokens": kw.pop("max_tokens", self.a.max_tokens)}
         body.update(kw)
-        s, h, d, t = http(self.url, self.key, body, stream=bool(kw.get("stream")))
+        s, h, d, t, ttfb = http(self.url, self.key, body, stream=bool(kw.get("stream")))
+        self.calls.append(s == 200)
         if s == 200 and not kw.get("stream"):
             self.headers.update(h)
+            ct = ((d.get("usage") or {}).get("completion_tokens") or 0) if isinstance(d, dict) else 0
+            if ct >= 50 and t > 0:
+                self.speeds.append(ct / t)
+        if ttfb is not None:
+            self.ttfbs.append(ttfb)
         return s, h, d, t
 
     @staticmethod
@@ -203,8 +210,8 @@ class Audit:
         self.add("instruction following", 5, 1.0 if ok else 0.0, txt[:60].replace("\n", " "))
 
     def t_errors(self):
-        s1, h1, d1, _ = http(self.url, self.key, {"model": self.a.model, "messages": []})
-        s2, h2, d2, _ = http(self.url, self.key, {"model": self.a.model + "-nonexistent-xyz", "messages": [{"role": "user", "content": "hi"}]})
+        s1, h1, d1, _, _ = http(self.url, self.key, {"model": self.a.model, "messages": []})
+        s2, h2, d2, _, _ = http(self.url, self.key, {"model": self.a.model + "-nonexistent-xyz", "messages": [{"role": "user", "content": "hi"}]})
 
         def is_err(s, d):
             try:
@@ -216,6 +223,26 @@ class Audit:
         m = re.search(r"under group ([^\s]+)", str(d2))
         if m:
             self.notes.append("relay channel group name: %s" % m.group(1))
+
+    def performance(self):
+        """0-100 from success rate (40), stream TTFB (30), output speed (30); reported separately from the authenticity score."""
+        parts = []
+        if self.calls:
+            parts.append((40, sum(self.calls) / len(self.calls)))
+        if self.ttfbs:
+            tf = sorted(self.ttfbs)[len(self.ttfbs) // 2]
+            parts.append((30, max(0.0, min(1.0, (15 - tf) / 12))))  # <=3s full, >=15s zero
+        if self.speeds:
+            sp = sorted(self.speeds)[len(self.speeds) // 2]
+            parts.append((30, max(0.0, min(1.0, (sp - 5) / 25))))  # >=30 tok/s full, <=5 zero
+        w = sum(x for x, _ in parts)
+        score = round(100 * sum(x * v for x, v in parts) / w) if w else None
+        detail = "success %d/%d" % (sum(self.calls), len(self.calls))
+        if self.ttfbs:
+            detail += "; ttfb %.1fs" % sorted(self.ttfbs)[len(self.ttfbs) // 2]
+        if self.speeds:
+            detail += "; speed %.0f tok/s" % sorted(self.speeds)[len(self.speeds) // 2]
+        return score, detail
 
     def run(self):
         self.hard_fail = None
@@ -230,7 +257,9 @@ class Audit:
         if self.hard_fail:
             total = min(total, 50)
         verdict = "highly credible" if total >= 90 else "mostly credible (check for downgrade)" if total >= 75 else "doubtful" if total >= 60 else "likely fake/substituted"
-        return {"model": self.a.model, "score": total, "verdict": verdict, "hard_fail": self.hard_fail, "checks": self.checks, "notes": self.notes}
+        perf, perf_detail = self.performance()
+        return {"model": self.a.model, "score": total, "verdict": verdict, "hard_fail": self.hard_fail, "checks": self.checks, "notes": self.notes,
+                "performance": perf, "performance_detail": perf_detail}
 
 
 def main():
@@ -260,6 +289,7 @@ def main():
         print("  %-22s %-8s %s" % (c["name"], sc, c["note"]))
     for n in r["notes"]:
         print("  note:", n)
+    print("  PERF %s/100  (%s)" % (r["performance"], r["performance_detail"]))
     if a.out:
         with open(a.out, "w", encoding="utf-8") as f:
             json.dump(r, f, ensure_ascii=False, indent=1)
