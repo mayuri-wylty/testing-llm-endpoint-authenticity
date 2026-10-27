@@ -1,0 +1,692 @@
+{
+ "area": "headers",
+ "_comment": "T4: vendor-headers check is claim-driven (--claim). Asserts the 'vendor headers' check (score / n-a / note) plus the total score range under scoring v2 (measured +-1; vendor headers weight 5). Mock profiles live in answerers_headers.py.",
+ "cases": [
+  {
+   "id": "hdr-official-hit",
+   "protocol": "chat",
+   "scenario": "good",
+   "args": [
+    "--claim",
+    "official"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^matched"
+   }
+  },
+  {
+   "id": "hdr-official-miss",
+   "protocol": "chat",
+   "scenario": "good:vendor=none",
+   "args": [
+    "--claim",
+    "official"
+   ],
+   "score": [
+    95,
+    97
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     0.2,
+     0.2
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "claim=official but no vendor headers"
+   }
+  },
+  {
+   "id": "hdr-official-contra-amzn",
+   "protocol": "chat",
+   "scenario": "good:vendor=moonshot_amzn",
+   "args": [
+    "--claim",
+    "official"
+   ],
+   "score": [
+    94,
+    96
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     0.0,
+     0.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^CLAIM CONTRADICTED:.*x-amzn-requestid"
+   }
+  },
+  {
+   "id": "hdr-official-anthropic-hit",
+   "protocol": "chat",
+   "scenario": "good:vendor=anthropic",
+   "args": [
+    "--claim",
+    "official",
+    "--vendor",
+    "anthropic"
+   ],
+   "score": [
+    95,
+    97
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     1.0,
+     1.0
+    ]
+   },
+   "no_default_args": true,
+   "check_notes": {
+    "vendor headers": "^matched.*anthropic-ratelimit"
+   }
+  },
+  {
+   "id": "hdr-official-anthropic-contra-amzn",
+   "protocol": "chat",
+   "scenario": "good:vendor=anthropic_amzn",
+   "args": [
+    "--claim",
+    "official",
+    "--vendor",
+    "anthropic"
+   ],
+   "score": [
+    90,
+    92
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     0.0,
+     0.0
+    ]
+   },
+   "no_default_args": true,
+   "check_notes": {
+    "vendor headers": "^CLAIM CONTRADICTED:.*x-amzn-requestid"
+   }
+  },
+  {
+   "id": "hdr-official-anthropic-contra-openai",
+   "protocol": "chat",
+   "scenario": "good:vendor=openai",
+   "args": [
+    "--claim",
+    "official",
+    "--vendor",
+    "anthropic"
+   ],
+   "score": [
+    90,
+    92
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     0.0,
+     0.0
+    ]
+   },
+   "no_default_args": true,
+   "check_notes": {
+    "vendor headers": "^CLAIM CONTRADICTED:.*openai-organization"
+   }
+  },
+  {
+   "id": "hdr-official-noprefix",
+   "protocol": "chat",
+   "scenario": "good:vendor=none",
+   "args": [
+    "--claim",
+    "official"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "no_default_args": true,
+   "check_notes": {
+    "vendor headers": "nothing to verify"
+   }
+  },
+  {
+   "id": "hdr-bedrock-hit",
+   "protocol": "chat",
+   "scenario": "good:vendor=bedrock",
+   "args": [
+    "--claim",
+    "bedrock"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^matched bedrock headers.*x-amzn-requestid"
+   }
+  },
+  {
+   "id": "hdr-bedrock-miss",
+   "protocol": "chat",
+   "scenario": "good:vendor=none",
+   "args": [
+    "--claim",
+    "bedrock"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "check_notes": {
+    "vendor headers": "absence not penalised for claim=bedrock"
+   }
+  },
+  {
+   "id": "hdr-bedrock-contra-openai",
+   "protocol": "chat",
+   "scenario": "good:vendor=bedrock_openai",
+   "args": [
+    "--claim",
+    "bedrock"
+   ],
+   "score": [
+    94,
+    96
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     0.0,
+     0.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^CLAIM CONTRADICTED:.*openai-organization"
+   }
+  },
+  {
+   "id": "hdr-bedrock-contra-anthropic",
+   "protocol": "chat",
+   "scenario": "good:vendor=bedrock_anthropic",
+   "args": [
+    "--claim",
+    "bedrock"
+   ],
+   "score": [
+    94,
+    96
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     0.0,
+     0.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^CLAIM CONTRADICTED:.*anthropic-ratelimit"
+   }
+  },
+  {
+   "id": "hdr-vertex-hit",
+   "protocol": "chat",
+   "scenario": "good:vendor=vertex",
+   "args": [
+    "--claim",
+    "vertex"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^matched vertex headers.*x-goog-request-id"
+   }
+  },
+  {
+   "id": "hdr-vertex-hit-google-profile",
+   "protocol": "chat",
+   "scenario": "good:vendor=google",
+   "args": [
+    "--claim",
+    "vertex"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^matched vertex headers"
+   }
+  },
+  {
+   "id": "hdr-vertex-miss",
+   "protocol": "chat",
+   "scenario": "good:vendor=none",
+   "args": [
+    "--claim",
+    "vertex"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "check_notes": {
+    "vendor headers": "absence not penalised for claim=vertex"
+   }
+  },
+  {
+   "id": "hdr-vertex-contra-amzn",
+   "protocol": "chat",
+   "scenario": "good:vendor=vertex_amzn",
+   "args": [
+    "--claim",
+    "vertex"
+   ],
+   "score": [
+    94,
+    96
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     0.0,
+     0.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^CLAIM CONTRADICTED:.*x-amzn-requestid"
+   }
+  },
+  {
+   "id": "hdr-vertex-contra-anthropic",
+   "protocol": "chat",
+   "scenario": "good:vendor=anthropic",
+   "args": [
+    "--claim",
+    "vertex"
+   ],
+   "score": [
+    94,
+    96
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     0.0,
+     0.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^CLAIM CONTRADICTED:.*anthropic-ratelimit"
+   }
+  },
+  {
+   "id": "hdr-azure-hit",
+   "protocol": "chat",
+   "scenario": "good:vendor=azure",
+   "args": [
+    "--claim",
+    "azure"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^matched azure headers.*x-ms-region"
+   }
+  },
+  {
+   "id": "hdr-azure-miss",
+   "protocol": "chat",
+   "scenario": "good:vendor=none",
+   "args": [
+    "--claim",
+    "azure"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "check_notes": {
+    "vendor headers": "absence not penalised for claim=azure"
+   }
+  },
+  {
+   "id": "hdr-azure-contra-goog",
+   "protocol": "chat",
+   "scenario": "good:vendor=azure_goog",
+   "args": [
+    "--claim",
+    "azure"
+   ],
+   "score": [
+    94,
+    96
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     0.0,
+     0.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^CLAIM CONTRADICTED:.*x-goog-request-id"
+   }
+  },
+  {
+   "id": "hdr-relay-hit",
+   "protocol": "chat",
+   "scenario": "good:relay=newapi",
+   "args": [
+    "--claim",
+    "relay"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false,
+    "notes": {
+     "regex": "relay markers.*new-api"
+    }
+   },
+   "checks": {
+    "vendor headers": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^matched"
+   }
+  },
+  {
+   "id": "hdr-relay-miss",
+   "protocol": "chat",
+   "scenario": "good:vendor=none,relay=newapi",
+   "args": [
+    "--claim",
+    "relay"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false,
+    "notes": {
+     "regex": "relay markers"
+    }
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "check_notes": {
+    "vendor headers": "absence not penalised for claim=relay"
+   }
+  },
+  {
+   "id": "hdr-relay-foreign-not-contradiction",
+   "protocol": "chat",
+   "scenario": "good:vendor=bedrock_openai",
+   "args": [
+    "--claim",
+    "relay"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "check_notes": {
+    "vendor headers": "absence not penalised for claim=relay"
+   }
+  },
+  {
+   "id": "hdr-unknown-hit",
+   "protocol": "chat",
+   "scenario": "good",
+   "args": [
+    "--claim",
+    "unknown"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "vendor headers": "^matched"
+   }
+  },
+  {
+   "id": "hdr-unknown-miss",
+   "protocol": "chat",
+   "scenario": "good:vendor=none",
+   "args": [
+    "--claim",
+    "unknown"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "check_notes": {
+    "vendor headers": "absence not penalised for claim=unknown"
+   }
+  },
+  {
+   "id": "hdr-unknown-foreign-not-contradiction",
+   "protocol": "chat",
+   "scenario": "good:vendor=bedrock_openai",
+   "args": [
+    "--claim",
+    "unknown"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "check_notes": {
+    "vendor headers": "absence not penalised for claim=unknown"
+   }
+  },
+  {
+   "id": "hdr-unknown-noprefix",
+   "protocol": "chat",
+   "scenario": "good:vendor=bedrock",
+   "args": [
+    "--claim",
+    "unknown"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "no_default_args": true,
+   "check_notes": {
+    "vendor headers": "no vendor/prefix given; skipped"
+   }
+  },
+  {
+   "id": "chat-no_headers",
+   "protocol": "chat",
+   "scenario": "no_headers",
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "crashed_checks": [],
+    "hard_fail": false
+   },
+   "checks": {
+    "vendor headers": null
+   },
+   "check_notes": {
+    "vendor headers": "absence not penalised for claim=unknown"
+   },
+   "note": "overrides expected_core: v1 scored 0.4 for absent headers; now n/a (default claim=unknown). Total score is aligned by T9."
+  }
+ ]
+}

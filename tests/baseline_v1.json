@@ -1,0 +1,761 @@
+{
+ "generated": "2026-10-26",
+ "script": "scripts\\model_audit.py",
+ "script_sha256": "3e68bef032dffc636822f9e598f2f6a9d0d49e71d1e02485b0e3cf0e800f202f",
+ "matches_backup_v1": true,
+ "records": 200,
+ "key": "fake test key (never a real one)",
+ "results": {
+  "chat-good": {
+   "scenario": "good",
+   "args": [],
+   "rc": 0,
+   "score": 98,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 50% depth; prompt_tokens=3299 (9938 chars, 0.33 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-emptychoices": {
+   "scenario": "emptychoices",
+   "args": [],
+   "rc": 0,
+   "score": 96,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 0.7777777777777778,
+     "weight": 15,
+     "note": "failed: ['has_id_choices', 'finish_reason']"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 50% depth; prompt_tokens=3299 (9938 chars, 0.33 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-inflate": {
+   "scenario": "inflate",
+   "args": [],
+   "rc": 0,
+   "score": 95,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": true,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 0.7,
+     "weight": 15,
+     "note": "needle found at 50% depth; prompt_tokens=16497 (9938 chars, 1.66 tok/char); USAGE INFLATED; 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-keyecho": {
+   "scenario": "keyecho",
+   "args": [],
+   "rc": 0,
+   "score": 98,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 50% depth; prompt_tokens=3299 (9938 chars, 0.33 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-truncate_head": {
+   "scenario": "truncate_head",
+   "args": [],
+   "rc": 0,
+   "score": 88,
+   "verdict": "mostly credible (check for downgrade)",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 0.3,
+     "weight": 15,
+     "note": "needle MISSED at 50% depth; prompt_tokens=1653 (9938 chars, 0.17 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-truncate_tail": {
+   "scenario": "truncate_tail",
+   "args": [],
+   "rc": 0,
+   "score": 98,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 50% depth; prompt_tokens=1649 (9938 chars, 0.17 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-no_headers": {
+   "scenario": "no_headers",
+   "args": [],
+   "rc": 0,
+   "score": 90,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 50% depth; prompt_tokens=3299 (9938 chars, 0.33 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 0.4,
+     "weight": 15,
+     "note": "none (relays may strip headers; weak negative)"
+    }
+   }
+  },
+  "chat-weak_reasoner": {
+   "scenario": "weak_reasoner",
+   "args": [],
+   "rc": 0,
+   "score": 92,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 0.25,
+     "weight": 10,
+     "note": "1/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 50% depth; prompt_tokens=3299 (9938 chars, 0.33 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-wrongvendor": {
+   "scenario": "wrongvendor",
+   "args": [],
+   "rc": 0,
+   "score": 50,
+   "verdict": "likely fake/substituted",
+   "hard_fail": "identity claims a different vendor",
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 0.0,
+     "weight": 15,
+     "note": "mentions other vendor: ChatGPT | 我是 ChatGPT，由 OpenAI 训练的大型语言模型。 | mentions other vendor: ChatGPT | I am ChatGPT, a large language model trained by OpenAI. | facts 0/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 50% depth; prompt_tokens=3299 (9938 chars, 0.33 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-tokprofile:family=qwen": {
+   "scenario": "tokprofile:family=qwen",
+   "args": [],
+   "rc": 0,
+   "score": 98,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 50% depth; prompt_tokens=2999 (9938 chars, 0.30 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-keyecho-401": {
+   "scenario": "keyecho:reject=401",
+   "args": [],
+   "rc": 1,
+   "score": null,
+   "verdict": null,
+   "hard_fail": null,
+   "usage_inflated": null,
+   "crashed_checks": null,
+   "checks": {}
+  },
+  "chat-truncate_head@0.1": {
+   "scenario": "truncate_head",
+   "args": [
+    "--needle-pos",
+    "0.1"
+   ],
+   "rc": 0,
+   "score": 88,
+   "verdict": "mostly credible (check for downgrade)",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 0.3,
+     "weight": 15,
+     "note": "needle MISSED at 10% depth; prompt_tokens=1653 (9938 chars, 0.17 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-truncate_head@0.9": {
+   "scenario": "truncate_head",
+   "args": [
+    "--needle-pos",
+    "0.9"
+   ],
+   "rc": 0,
+   "score": 98,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 90% depth; prompt_tokens=1653 (9938 chars, 0.17 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-truncate_tail@0.1": {
+   "scenario": "truncate_tail",
+   "args": [
+    "--needle-pos",
+    "0.1"
+   ],
+   "rc": 0,
+   "score": 98,
+   "verdict": "highly credible",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "needle found at 10% depth; prompt_tokens=1649 (9938 chars, 0.17 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  },
+  "chat-truncate_tail@0.9": {
+   "scenario": "truncate_tail",
+   "args": [
+    "--needle-pos",
+    "0.9"
+   ],
+   "rc": 0,
+   "score": 88,
+   "verdict": "mostly credible (check for downgrade)",
+   "hard_fail": null,
+   "usage_inflated": false,
+   "crashed_checks": [],
+   "checks": {
+    "format+stream": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "all ok"
+    },
+    "identity+facts": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "我是 Kimi，由月之暗面（Moonshot AI）开发的人工智能助手。 | I am Kimi, an AI assistant created by Moonshot AI. | facts 1/1"
+    },
+    "reasoning": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "4/4 correct"
+    },
+    "long context": {
+     "score": 0.3,
+     "weight": 15,
+     "note": "needle MISSED at 90% depth; prompt_tokens=1650 (9938 chars, 0.17 tok/char); 0s"
+    },
+    "tools+json": {
+     "score": 1.0,
+     "weight": 10,
+     "note": "tool roundtrip ok; json_mode ok"
+    },
+    "instruction following": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "ACK: How about a simple noodle soup or a rice bowl with vege"
+    },
+    "error format": {
+     "score": 1.0,
+     "weight": 5,
+     "note": "empty-messages HTTP 400, bad-model HTTP 400"
+    },
+    "vendor headers": {
+     "score": 1.0,
+     "weight": 15,
+     "note": "matched: ['msh-request-id', 'x-msh-trace-id']"
+    }
+   }
+  }
+ }
+}

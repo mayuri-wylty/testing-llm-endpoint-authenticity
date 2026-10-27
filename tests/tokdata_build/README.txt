@@ -1,0 +1,1 @@
+Calibration scripts for scripts/data/tokenizer_bands.json (run in a temp venv with tiktoken/transformers; not used at runtime). Inputs (results_*.json, texts_def.json, model weights) were deleted; regenerate by running measure.py first.

@@ -1,0 +1,592 @@
+{
+ "area": "tokenizer",
+ "_comment": "tokenizer fingerprint (T7b). Tokenizer weight is 10 in scoring v2; besides the check's own score/note, the total score range (measured +-1 under v2) is asserted. Mock hook: tests/usage_tokenizer.py (family/tokvariant/tokflat knobs). usage=None is not reachable through the mock (no knob omits usage); it was unit-tested with a fake Audit.",
+ "cases": [
+  {
+   "id": "tok-qwen-actual-qwen",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=qwen",
+   "args": [
+    "--tokenizer-family",
+    "qwen"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with qwen \\(4/4.*usage may be recomputed by the relay"
+   },
+   "note": "claimed = actual: all 4 categories inside the band"
+  },
+  {
+   "id": "tok-qwen-claimed-actual-deepseek",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=deepseek",
+   "args": [
+    "--tokenizer-family",
+    "qwen"
+   ],
+   "score": [
+    91,
+    93
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.2,
+     0.2
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "digits 0\\.3\\d+ OUT.*capped at 0\\.2.*closest high-confidence family by measured slopes: deepseek"
+   },
+   "note": "digits cluster (0.33 vs ~1.0) fails; en/zh/code coincide so only the digits cap makes this low"
+  },
+  {
+   "id": "tok-glm-claimed-actual-qwen",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=qwen",
+   "args": [
+    "--tokenizer-family",
+    "glm"
+   ],
+   "score": [
+    91,
+    93
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.2,
+     0.2
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "digits 1\\.000 OUT.*closest high-confidence family by measured slopes: qwen"
+   }
+  },
+  {
+   "id": "tok-glm-actual-glm",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=glm",
+   "args": [
+    "--tokenizer-family",
+    "glm"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with glm \\(4/4"
+   }
+  },
+  {
+   "id": "tok-kimi-claimed-actual-openai",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=openai",
+   "args": [
+    "--tokenizer-family",
+    "kimi"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.74,
+     0.76
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "partially compatible with kimi \\(3/4.*zh 0\\.7\\d+ OUT.*digits 0\\.333 ok"
+   },
+   "note": "same digits cluster but zh (0.71 vs kimi 0.41-0.46) tells them apart -> partial, not 'cannot discriminate'"
+  },
+  {
+   "id": "tok-llama-claimed-actual-openai",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=openai",
+   "args": [
+    "--tokenizer-family",
+    "llama"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with llama \\(4/4.*cannot discriminate from openai"
+   },
+   "note": "llama and o200k bands overlap on every category"
+  },
+  {
+   "id": "tok-openai-cl100k-via-vendor",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=gpt,tokvariant=cl100k",
+   "args": [
+    "--vendor",
+    "openai"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with openai \\(4/4.*zh 1\\.29\\d ok"
+   },
+   "note": "family inferred from --vendor; cl100k zh slope inside the wide openai band"
+  },
+  {
+   "id": "tok-explicit-family-beats-vendor",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=qwen",
+   "args": [
+    "--tokenizer-family",
+    "qwen",
+    "--vendor",
+    "openai"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with qwen"
+   }
+  },
+  {
+   "id": "tok-inferred-from-model-good",
+   "protocol": "chat",
+   "scenario": "good",
+   "args": [],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with kimi \\(4/4.*cannot discriminate from deepseek"
+   },
+   "note": "default model kimi-k3 -> kimi inferred; default mock family is kimi"
+  },
+  {
+   "id": "tok-claude-low-conf-capped",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=claude",
+   "args": [
+    "--tokenizer-family",
+    "claude"
+   ],
+   "score": [
+    96,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.7,
+     0.7
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with claude \\(4/4.*low-confidence band"
+   },
+   "note": "low-confidence claimed family: full compatibility caps at 0.7"
+  },
+  {
+   "id": "tok-claude-claimed-actual-qwen",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=qwen",
+   "args": [
+    "--tokenizer-family",
+    "claude"
+   ],
+   "score": [
+    92,
+    94
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.3,
+     0.3
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "low-confidence band.*closest high-confidence family by measured slopes: qwen"
+   },
+   "note": "low-confidence band alone cannot go below 0.3"
+  },
+  {
+   "id": "tok-gemini-low-conf-capped",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=gemini",
+   "args": [
+    "--tokenizer-family",
+    "gemini"
+   ],
+   "score": [
+    96,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.7,
+     0.7
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with gemini \\(4/4.*low-confidence band"
+   }
+  },
+  {
+   "id": "tok-qwen-claimed-actual-gemini",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=gemini",
+   "args": [
+    "--tokenizer-family",
+    "qwen"
+   ],
+   "score": [
+    95,
+    97
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.59,
+     0.61
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "partially compatible with qwen \\(2/4.*zh 0\\.629 OUT.*digits 1\\.000 ok"
+   },
+   "note": "digits fits (both ~1.0) but zh/code do not: proportional score"
+  },
+  {
+   "id": "tok-all-incompatible-inflated",
+   "protocol": "chat",
+   "scenario": "inflate",
+   "args": [
+    "--tokenizer-family",
+    "kimi"
+   ],
+   "score": [
+    81,
+    83
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.0,
+     0.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "NOT compatible with kimi \\(0/4.*closest high-confidence"
+   },
+   "note": "usage x5: no category fits; check can only lower, never hard-fail"
+  },
+  {
+   "id": "tok-overhead-cancels",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=qwen,overhead=50",
+   "args": [
+    "--vendor",
+    "alibaba"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with qwen \\(4/4.*fixed overhead ~57 tok"
+   },
+   "note": "fixed overhead 57 tok must not move the differential slope"
+  },
+  {
+   "id": "tok-family-not-in-table",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=qwen",
+   "args": [
+    "--tokenizer-family",
+    "mistral"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": null
+   },
+   "check_notes": {
+    "tokenizer": "claimed family 'mistral' has no usable band"
+   },
+   "note": "unknown family -> n/a"
+  },
+  {
+   "id": "tok-no-claimed-family",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=qwen",
+   "args": [],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": null
+   },
+   "check_notes": {
+    "tokenizer": "no claimed family"
+   },
+   "model": "xyz-model",
+   "note": "no --tokenizer-family/--vendor and the model name infers nothing -> n/a"
+  },
+  {
+   "id": "tok-usage-flat-na",
+   "protocol": "chat",
+   "scenario": "tokflat",
+   "args": [
+    "--tokenizer-family",
+    "qwen"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": null
+   },
+   "check_notes": {
+    "tokenizer": "no usable prompt-token usage"
+   },
+   "note": "prompt_tokens does not grow with text length -> every category skipped -> n/a"
+  },
+  {
+   "id": "tok-messages-qwen-actual-qwen",
+   "protocol": "messages",
+   "scenario": "tokprofile:family=qwen",
+   "args": [
+    "--tokenizer-family",
+    "qwen"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with qwen \\(4/4"
+   },
+   "note": "usage normalised by the adapter; same slopes as chat"
+  },
+  {
+   "id": "tok-messages-claimed-qwen-actual-deepseek",
+   "protocol": "messages",
+   "scenario": "tokprofile:family=deepseek",
+   "args": [
+    "--tokenizer-family",
+    "qwen"
+   ],
+   "score": [
+    91,
+    93
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.2,
+     0.2
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "digits 0\\.3\\d+ OUT"
+   }
+  },
+  {
+   "id": "tok-responses-qwen-actual-qwen",
+   "protocol": "responses",
+   "scenario": "tokprofile:family=qwen",
+   "args": [
+    "--tokenizer-family",
+    "qwen"
+   ],
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     1.0,
+     1.0
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "compatible with qwen \\(4/4"
+   },
+   "note": "usage normalised by the adapter; same slopes as chat"
+  },
+  {
+   "id": "tok-responses-claimed-qwen-actual-deepseek",
+   "protocol": "responses",
+   "scenario": "tokprofile:family=deepseek",
+   "args": [
+    "--tokenizer-family",
+    "qwen"
+   ],
+   "score": [
+    91,
+    93
+   ],
+   "flags": {
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "tokenizer": [
+     0.2,
+     0.2
+    ]
+   },
+   "check_notes": {
+    "tokenizer": "digits 0\\.3\\d+ OUT"
+   }
+  }
+ ],
+ "protocol_args": {
+  "messages": [
+   "--protocol",
+   "messages"
+  ],
+  "responses": [
+   "--protocol",
+   "responses"
+  ]
+ }
+}
