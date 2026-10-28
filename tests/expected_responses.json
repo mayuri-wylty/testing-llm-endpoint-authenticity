@@ -1,0 +1,593 @@
+{
+ "area": "responses",
+ "_comment": "OpenAI /v1/responses protocol (adapters_responses.py + mock_proto_responses.py), mock-only. Total-score ranges re-aligned 2026-10-26 to scoring v2 (measured value +-1); re-measure if scoring.WEIGHTS changes.",
+ "protocol_args": {
+  "responses": [
+   "--protocol",
+   "responses"
+  ]
+ },
+ "cases": [
+  {
+   "id": "responses-good",
+   "protocol": "responses",
+   "scenario": "good",
+   "score": [
+    97,
+    99
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "format+stream": "all ok",
+    "tools+json": "tool roundtrip ok.*json_mode ok",
+    "error format": "HTTP 400.*HTTP 400",
+    "long context": "found 3/3"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED",
+    "TESTKEY"
+   ],
+   "note": "reference over /v1/responses: SSE without [DONE] (done=response.completed), function_call/function_call_output roundtrip, json via text.format, max_output_tokens>=16 enforced by the mock, empty input -> 400"
+  },
+  {
+   "id": "responses-emptychoices",
+   "protocol": "responses",
+   "scenario": "emptychoices",
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.75,
+     0.8
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "format+stream": "has_id_choices.*finish_reason",
+    "tools+json": "tool roundtrip ok"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED",
+    "TESTKEY"
+   ],
+   "note": "output=[] for 'say hi' (no message item, usage.output_tokens 0): format+stream loses has_id_choices+finish_reason, must not crash"
+  },
+  {
+   "id": "responses-inflate",
+   "protocol": "responses",
+   "scenario": "inflate",
+   "score": [
+    81,
+    83
+   ],
+   "flags": {
+    "usage_inflated": true,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.65,
+     0.75
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {},
+   "stdout_not_contains": [
+    "TESTKEY"
+   ],
+   "note": "input_tokens x5: only the token-sanity part of long context is lost",
+   "stdout_contains": [
+    "USAGE INFLATED"
+   ]
+  },
+  {
+   "id": "responses-keyecho",
+   "protocol": "responses",
+   "scenario": "keyecho",
+   "score": [
+    97,
+    99
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "format+stream": "all ok",
+    "tools+json": "tool roundtrip ok.*json_mode ok",
+    "error format": "HTTP 400.*HTTP 400",
+    "long context": "found 3/3"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED",
+    "TESTKEY"
+   ],
+   "note": "400 error bodies echo the full key + masked key: neither may reach stdout/--out JSON (regress also scans for leaks)"
+  },
+  {
+   "id": "responses-keyecho-401",
+   "protocol": "responses",
+   "scenario": "keyecho:reject=401",
+   "expect_rc": 1,
+   "stdout_not_contains": [
+    "TESTKEY"
+   ],
+   "note": "every request 401 with the key echoed: audit exits via sys.exit(scrub(...)); no key material in stderr"
+  },
+  {
+   "id": "responses-truncate_head",
+   "protocol": "responses",
+   "scenario": "truncate_head",
+   "score": [
+    77,
+    79
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.48,
+     0.58
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "MISSED at 10%,50%.*head truncation"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED",
+    "TESTKEY"
+   ],
+   "note": "head cut: needles at 10% and 50% lost, 90% survives -> long context partial, notes name head truncation"
+  },
+  {
+   "id": "responses-truncate_tail",
+   "protocol": "responses",
+   "scenario": "truncate_tail",
+   "score": [
+    83,
+    85
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.72,
+     0.82
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "MISSED at 90%.*tail truncation"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED",
+    "TESTKEY"
+   ],
+   "note": "tail cut: needle at 90% lost -> notes name tail truncation"
+  },
+  {
+   "id": "responses-no_headers",
+   "protocol": "responses",
+   "scenario": "no_headers",
+   "score": [
+    97,
+    99
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": null
+   },
+   "check_notes": {
+    "vendor headers": "absence not penalised"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED",
+    "TESTKEY"
+   ],
+   "note": "no vendor headers with --claim unknown: headers check is n/a (not penalised, weight renormalised)"
+  },
+  {
+   "id": "responses-weak_reasoner",
+   "protocol": "responses",
+   "scenario": "weak_reasoner",
+   "score": [
+    90,
+    92
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.35,
+     0.45
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "reasoning": "hard 0/3"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED",
+    "TESTKEY"
+   ],
+   "note": "easy questions right, hard ones wrong: reasoning drops, must stay clearly below good"
+  },
+  {
+   "id": "responses-wrongvendor",
+   "protocol": "responses",
+   "scenario": "wrongvendor",
+   "score": [
+    49,
+    51
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": true,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0,
+     0.02
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {},
+   "stdout_not_contains": [
+    "USAGE INFLATED",
+    "TESTKEY"
+   ],
+   "note": "identity claims OpenAI/ChatGPT -> hard_fail caps at 50",
+   "stdout_contains": [
+    "HARD FAIL"
+   ]
+  },
+  {
+   "id": "responses-resp_reasoning",
+   "protocol": "responses",
+   "scenario": "resp_reasoning",
+   "score": [
+    97,
+    99
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": [],
+    "notes": {
+     "regex": "reasoning_content present: True; reasoning_tokens: 7"
+    }
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "format+stream": "all ok",
+    "tools+json": "tool roundtrip ok.*json_mode ok",
+    "error format": "HTTP 400.*HTTP 400",
+    "long context": "found 3/3"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED",
+    "TESTKEY"
+   ],
+   "note": "reasoning item + reasoning_tokens=7 in every answer: has_reasoning/usage.reasoning parsed, reasoning item echoed back with the function_call in the tool roundtrip"
+  }
+ ]
+}

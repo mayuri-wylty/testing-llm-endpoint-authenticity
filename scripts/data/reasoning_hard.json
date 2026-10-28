@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "easy_note": "the easy tier (pool, strawberry/Mississippi, bat and ball, 17*23) lives in checks_reasoning.EASY so it is always available as a fallback",
+  "match_rule": "hard answers must be the LAST number in the reply (thousands commas are stripped first); answer_regex encodes that rule",
+  "hard": [
+    {
+      "id": "hard-binary-runs",
+      "q": "Count the binary strings of length 18 that contain exactly 9 ones and 9 zeros and in which no three consecutive characters are identical (so neither 000 nor 111 appears anywhere). Reply with only the number.",
+      "answer": "3254",
+      "answer_regex": "(?<![\\d.])3254(?!\\d)\\D*$",
+      "how_verified": "tests/verify_reasoning_hard.py: enumerate all C(18,9)=48620 placements of the ones and test every window of 3; cross-checked with a DP over (position, ones used, last symbol, run length)"
+    },
+    {
+      "id": "hard-mod-sequence",
+      "q": "Define a sequence by a_1 = 5 and, for n >= 2, a_n = (a_{n-1}^2 + 2n + 1) mod 211, where mod gives the remainder in the range 0..210. What is a_14? Reply with only the number.",
+      "answer": "166",
+      "answer_regex": "(?<![\\d.])166(?!\\d)\\D*$",
+      "how_verified": "tests/verify_reasoning_hard.py: direct iteration with the % operator; cross-checked with pow(a, 2, 211) and a recursive definition"
+    },
+    {
+      "id": "hard-circle-elimination",
+      "q": "58 people numbered 1 to 58 stand in a circle. Counting starts at person 1, who is counted as 1, and proceeds in increasing number order (after 58 comes 1). Every 6th person counted leaves the circle, and counting resumes with the next remaining person as 1. This continues until one person remains. Which numbered person remains? Reply with only the number.",
+      "answer": "41",
+      "answer_regex": "(?<![\\d.])41(?!\\d)\\D*$",
+      "how_verified": "tests/verify_reasoning_hard.py: list simulation, deque rotation simulation, and the closed recurrence J(n) = (J(n-1) + k) mod n"
+    }
+  ]
+}

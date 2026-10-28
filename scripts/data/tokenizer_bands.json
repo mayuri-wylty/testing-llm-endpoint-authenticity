@@ -1,0 +1,420 @@
+{
+ "version": 1,
+ "generated": "2026-10-26",
+ "method": "Differential slope tok/char: slope = (tokens(unit*b) - tokens(unit*a)) / (len(unit*b) - len(unit*a)), reps=[a,b], which cancels fixed endpoint overhead (chat template, hidden system prompt). Offline values computed with tiktoken 0.14.0 / tokenizers 0.23.3 / transformers 5.20.2 with special tokens disabled; ratios[class]=[min,max] over the family's tokenizers expanded by 5% each side (gemini +/-15%; claude hand-set from third-party measurements). 'measured' holds the raw per-tokenizer slopes (extra field, may be ignored).",
+ "texts": {
+  "en": {
+   "unit": "Notwithstanding the unprecedented electromagnetic interference, Dr. Hernandez's interdisciplinary team (22 researchers, 3 labs) re-calibrated the spectrophotometers; however, 87.5% of the measurements remained inconsistent. Cryptographic authentication isn't foolproof!\n",
+   "reps": [
+    20,
+    120
+   ]
+  },
+  "zh": {
+   "unit": "今天天气很好，我们一起去公园散步，然后在附近的餐厅吃午饭。生活中的小事常常让人感到幸福，希望大家都能健康快乐地度过每一天。\n",
+   "reps": [
+    20,
+    120
+   ]
+  },
+  "code": {
+   "unit": "class HTTPRequestHandler(BaseHTTPRequestHandler):\n    def do_GET(self):\n        payload = json.dumps({\"status\": \"ok\", \"items\": [x ** 2 for x in range(16)]}, indent=2)\n        self.send_response(200)  # TODO: handle KeyError / ValueError\n        self.wfile.write(payload.encode(\"utf-8\"))\n",
+   "reps": [
+    20,
+    120
+   ]
+  },
+  "digits": {
+   "unit": "3141592653589793238462643383279502884197169399375105820974944592",
+   "reps": [
+    20,
+    120
+   ]
+  }
+ },
+ "families": {
+  "openai": {
+   "confidence": "high",
+   "tokenizers": [
+    "o200k_base",
+    "cl100k_base"
+   ],
+   "ratios": {
+    "en": [
+     0.1795,
+     0.1983
+    ],
+    "zh": [
+     0.6742,
+     1.3548
+    ],
+    "code": [
+     0.2417,
+     0.2744
+    ],
+    "digits": [
+     0.3166,
+     0.35
+    ]
+   },
+   "source": "tiktoken 0.14.0 offline encodings o200k_base (gpt-4o/4.1/5 family) and cl100k_base (gpt-4/gpt-3.5); openai/gpt-oss-20b tokenizer.json (o200k_harmony) measured identical to o200k_base",
+   "notes": "Band spans both encodings; the zh gap (o200k 0.71 vs cl100k 1.29) makes the zh band wide. o1/o3/o4 also use o200k_base. Special tokens not counted (encode with disallowed_special=()).",
+   "measured": {
+    "o200k_base": {
+     "en": 0.1889,
+     "zh": 0.7097,
+     "code": 0.2613,
+     "digits": 0.3333
+    },
+    "cl100k_base": {
+     "en": 0.1889,
+     "zh": 1.2903,
+     "code": 0.2544,
+     "digits": 0.3333
+    }
+   }
+  },
+  "deepseek": {
+   "confidence": "high",
+   "tokenizers": [
+    "deepseek-ai/DeepSeek-V3",
+    "deepseek-ai/DeepSeek-V3.1",
+    "deepseek-ai/DeepSeek-V3.2"
+   ],
+   "ratios": {
+    "en": [
+     0.1724,
+     0.1906
+    ],
+    "zh": [
+     0.4597,
+     0.5081
+    ],
+    "code": [
+     0.2582,
+     0.2854
+    ],
+    "digits": [
+     0.3166,
+     0.35
+    ]
+   },
+   "source": "HuggingFace tokenizer.json of deepseek-ai/DeepSeek-V3, V3.1, V3.2 via tokenizers lib; add_special_tokens=False",
+   "notes": "V3/V3.1/V3.2/R1 share one 128k vocab (measured identical on these 4 texts). Legacy deepseek-ai/DeepSeek-V2.5 (100k vocab, splits digits one by one) measured en 0.2074 zh 0.5161 code 0.3206 digits 1.0 and is NOT included in the band; an endpoint serving V2.x would fall outside the digits band.",
+   "measured": {
+    "deepseek-ai/DeepSeek-V3": {
+     "en": 0.1815,
+     "zh": 0.4839,
+     "code": 0.2718,
+     "digits": 0.3333
+    },
+    "deepseek-ai/DeepSeek-V3.1": {
+     "en": 0.1815,
+     "zh": 0.4839,
+     "code": 0.2718,
+     "digits": 0.3333
+    },
+    "deepseek-ai/DeepSeek-V3.2": {
+     "en": 0.1815,
+     "zh": 0.4839,
+     "code": 0.2718,
+     "digits": 0.3333
+    }
+   }
+  },
+  "qwen": {
+   "confidence": "high",
+   "tokenizers": [
+    "Qwen/Qwen2.5-7B-Instruct",
+    "Qwen/Qwen3-8B",
+    "Qwen/Qwen3-Next-80B-A3B-Instruct",
+    "Qwen/Qwen3.5-397B-A17B"
+   ],
+   "ratios": {
+    "en": [
+     0.1865,
+     0.21
+    ],
+    "zh": [
+     0.4443,
+     0.5419
+    ],
+    "code": [
+     0.2516,
+     0.2926
+    ],
+    "digits": [
+     0.95,
+     1.05
+    ]
+   },
+   "source": "HuggingFace tokenizer.json of Qwen2.5-7B-Instruct, Qwen3-8B, Qwen3-Next-80B-A3B-Instruct, Qwen3.5-397B-A17B",
+   "notes": "Qwen2.5/Qwen3/Qwen3-Next identical on the 4 texts; Qwen3.5 has an extended vocab (slightly different zh/code). Splits digits one by one (digits ~1.0) which is the strongest discriminator vs o200k/deepseek/kimi/llama (0.333).",
+   "measured": {
+    "Qwen/Qwen2.5-7B-Instruct": {
+     "en": 0.1963,
+     "zh": 0.5161,
+     "code": 0.2648,
+     "digits": 1.0
+    },
+    "Qwen/Qwen3-8B": {
+     "en": 0.1963,
+     "zh": 0.5161,
+     "code": 0.2648,
+     "digits": 1.0
+    },
+    "Qwen/Qwen3-Next-80B-A3B-Instruct": {
+     "en": 0.1963,
+     "zh": 0.5161,
+     "code": 0.2648,
+     "digits": 1.0
+    },
+    "Qwen/Qwen3.5-397B-A17B": {
+     "en": 0.2,
+     "zh": 0.4677,
+     "code": 0.2787,
+     "digits": 1.0
+    }
+   }
+  },
+  "kimi": {
+   "confidence": "high",
+   "tokenizers": [
+    "moonshotai/Kimi-K2-Instruct",
+    "moonshotai/Kimi-K2-Instruct-0905",
+    "moonshotai/Kimi-K2-Thinking",
+    "moonshotai/Kimi-K2.5"
+   ],
+   "ratios": {
+    "en": [
+     0.1724,
+     0.1906
+    ],
+    "zh": [
+     0.4137,
+     0.4573
+    ],
+    "code": [
+     0.2516,
+     0.278
+    ],
+    "digits": [
+     0.3166,
+     0.35
+    ]
+   },
+   "source": "moonshotai/Kimi-K2-* tokenizers (tiktoken-based tokenization_kimi.py, loaded with transformers trust_remote_code=True)",
+   "notes": "K2 Instruct / 0905 / Thinking / K2.5 measured identical on the 4 texts. Older Moonshot (moonshot-v1-*) models are not covered.",
+   "measured": {
+    "moonshotai/Kimi-K2-Instruct": {
+     "en": 0.1815,
+     "zh": 0.4355,
+     "code": 0.2648,
+     "digits": 0.3333
+    },
+    "moonshotai/Kimi-K2-Instruct-0905": {
+     "en": 0.1815,
+     "zh": 0.4355,
+     "code": 0.2648,
+     "digits": 0.3333
+    },
+    "moonshotai/Kimi-K2-Thinking": {
+     "en": 0.1815,
+     "zh": 0.4355,
+     "code": 0.2648,
+     "digits": 0.3333
+    },
+    "moonshotai/Kimi-K2.5": {
+     "en": 0.1815,
+     "zh": 0.4355,
+     "code": 0.2648,
+     "digits": 0.3333
+    }
+   }
+  },
+  "glm": {
+   "confidence": "high",
+   "tokenizers": [
+    "THUDM/glm-4-9b-chat",
+    "zai-org/GLM-4.5",
+    "zai-org/GLM-4.6",
+    "zai-org/GLM-4.7",
+    "zai-org/GLM-5"
+   ],
+   "ratios": {
+    "en": [
+     0.1795,
+     0.1983
+    ],
+    "zh": [
+     0.4597,
+     0.5081
+    ],
+    "code": [
+     0.2417,
+     0.2671
+    ],
+    "digits": [
+     0.6035,
+     0.6671
+    ]
+   },
+   "source": "HuggingFace tokenizers of THUDM/glm-4-9b-chat (trust_remote_code) and zai-org/GLM-4.5/4.6/4.7/5 (tokenizer.json)",
+   "notes": "All GLM-4.x/5 measured identical. Digits slope (0.6353) is specific to the fixed digit string because GLM merges multi-digit runs irregularly; do not change the digits text without recomputing.",
+   "measured": {
+    "THUDM/glm-4-9b-chat": {
+     "en": 0.1889,
+     "zh": 0.4839,
+     "code": 0.2544,
+     "digits": 0.6353
+    },
+    "zai-org/GLM-4.5": {
+     "en": 0.1889,
+     "zh": 0.4839,
+     "code": 0.2544,
+     "digits": 0.6353
+    },
+    "zai-org/GLM-4.6": {
+     "en": 0.1889,
+     "zh": 0.4839,
+     "code": 0.2544,
+     "digits": 0.6353
+    },
+    "zai-org/GLM-4.7": {
+     "en": 0.1889,
+     "zh": 0.4839,
+     "code": 0.2544,
+     "digits": 0.6353
+    },
+    "zai-org/GLM-5": {
+     "en": 0.1889,
+     "zh": 0.4839,
+     "code": 0.2544,
+     "digits": 0.6353
+    }
+   }
+  },
+  "llama": {
+   "confidence": "high",
+   "tokenizers": [
+    "NousResearch/Meta-Llama-3-8B",
+    "unsloth/Llama-3.2-1B",
+    "unsloth/Llama-3.3-70B-Instruct",
+    "unsloth/Llama-4-Scout-17B-16E-Instruct"
+   ],
+   "ratios": {
+    "en": [
+     0.1724,
+     0.1983
+    ],
+    "zh": [
+     0.567,
+     0.796
+    ],
+    "code": [
+     0.2417,
+     0.278
+    ],
+    "digits": [
+     0.3166,
+     0.35
+    ]
+   },
+   "source": "HuggingFace tokenizer.json from public mirrors (NousResearch / unsloth) of Llama-3, 3.2, 3.3 and Llama-4-Scout (gated meta-llama repos not used)",
+   "notes": "Llama-3.x share one 128k vocab; Llama-4 has a 202k vocab (lower zh). Llama-2 (sentencepiece 32k) not included. Hosted Llama endpoints usually serve 3.x or 4.",
+   "measured": {
+    "NousResearch/Meta-Llama-3-8B": {
+     "en": 0.1889,
+     "zh": 0.7581,
+     "code": 0.2544,
+     "digits": 0.3333
+    },
+    "unsloth/Llama-3.2-1B": {
+     "en": 0.1889,
+     "zh": 0.7581,
+     "code": 0.2544,
+     "digits": 0.3333
+    },
+    "unsloth/Llama-3.3-70B-Instruct": {
+     "en": 0.1889,
+     "zh": 0.7581,
+     "code": 0.2544,
+     "digits": 0.3333
+    },
+    "unsloth/Llama-4-Scout-17B-16E-Instruct": {
+     "en": 0.1815,
+     "zh": 0.5968,
+     "code": 0.2648,
+     "digits": 0.3333
+    }
+   }
+  },
+  "gemini": {
+   "confidence": "low",
+   "tokenizers": [
+    "unsloth/gemma-2-2b",
+    "unsloth/gemma-3-1b-it"
+   ],
+   "ratios": {
+    "en": [
+     0.17,
+     0.2385
+    ],
+    "zh": [
+     0.5346,
+     0.7233
+    ],
+    "code": [
+     0.2636,
+     0.3566
+    ],
+    "digits": [
+     0.85,
+     1.15
+    ]
+   },
+   "source": "Approximation: Gemma SentencePiece tokenizers (unsloth mirrors). Google states Gemma uses a subset of Gemini's SentencePiece tokenizer (arXiv 2403.08295: splits digits, keeps whitespace); community gemini-tokenizer crate uses the Gemma3 model for all Gemini models. Google docs say ~4 chars/token for English (https://ai.google.dev/gemini-api/docs/tokens).",
+   "notes": "Not the real Gemini tokenizer; band expanded +/-15% instead of 5% to reflect approximation. Google's 4 chars/token English rule of thumb (0.25 tok/char) is above the measured gemma en slope (~0.20 on this rare-word-heavy text), so a real Gemini endpoint may sit above this band on en; treat en as weak evidence and rely on digits/zh/code.",
+   "measured": {
+    "unsloth/gemma-2-2b": {
+     "en": 0.2074,
+     "zh": 0.629,
+     "code": 0.3101,
+     "digits": 1.0
+    },
+    "unsloth/gemma-3-1b-it": {
+     "en": 0.2,
+     "zh": 0.629,
+     "code": 0.3101,
+     "digits": 1.0
+    }
+   },
+   "approximation_of": "gemini"
+  },
+  "claude": {
+   "confidence": "low",
+   "tokenizers": [],
+   "ratios": {
+    "en": [
+     0.17,
+     0.32
+    ],
+    "zh": [
+     0.85,
+     1.3
+    ],
+    "code": [
+     0.22,
+     0.42
+    ],
+    "digits": [
+     0.3,
+     0.55
+    ]
+   },
+   "source": "NOT computed. Anthropic publishes no tokenizer. Hand-set wide bands from third-party measurements via /v1/messages/count_tokens: claudecodecamp.com 2026-04-16 'I Measured Claude 4.7's New Tokenizer' (Claude 4.6 vs 4.7 tokens/char: English prose 0.231->0.278, technical docs 0.188->0.277, Python 0.271->0.349, Chinese prose 1.039->1.052, numeric CSV 0.528->0.567; single-shot counts incl. ~8 token message overhead); Sander Land 'On the Biology of Claude's Tokenizer' (tokencontributions.substack.com, 2026-07-29: Han chars tokenized one per token, digits in groups of 3, unofficial reverse engineering); Anthropic Opus 4.7 migration note: new tokenizer uses roughly 1.0-1.35x tokens vs previous.",
+   "notes": "Bands are deliberately wide and unverified against this skill's fixed texts; the Claude tokenizer changed between model generations (4.6 vs 4.7+ differ 1.0-1.47x on English/code, ~1.0x on CJK), so one family band must cover several tokenizers. digits band is inferred (groups of 3 -> 0.333; numeric CSV measured 0.53-0.57 including commas). Use only as weak evidence (e.g. 'Claude-like' vs 'digits~1.0 Qwen/Gemini-like'); do not claim exact match.",
+   "measured": null
+  }
+ }
+}

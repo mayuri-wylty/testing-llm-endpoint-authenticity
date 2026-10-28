@@ -1,0 +1,802 @@
+{
+ "area": "core",
+ "_comment": "Chat-protocol cases generated from baseline_v1.json (v1 backup 2026-10-26); per-check ranges are v1 values (unchanged by v2), total-score ranges re-aligned to scoring v2 (baseline_v1.json keeps the v1 totals). Notes mentioning 'v1' describe the v1 detection logic. Later areas may supersede a case by reusing its id.",
+ "cases": [
+  {
+   "id": "chat-good",
+   "protocol": "chat",
+   "scenario": "good",
+   "score": [
+    97,
+    99
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "reference: v1 maxes out at the 98 cap"
+  },
+  {
+   "id": "chat-emptychoices",
+   "protocol": "chat",
+   "scenario": "emptychoices",
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.758,
+     0.798
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "choices=[] for 'say hi': format+stream loses has_id_choices+finish_reason; must not crash"
+  },
+  {
+   "id": "chat-inflate",
+   "protocol": "chat",
+   "scenario": "inflate",
+   "score": [
+    81,
+    83
+   ],
+   "flags": {
+    "usage_inflated": true,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.68,
+     0.72
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "prompt_tokens x5: only the 0.3 token-sanity part of long context is lost"
+  },
+  {
+   "id": "chat-keyecho",
+   "protocol": "chat",
+   "scenario": "keyecho",
+   "score": [
+    97,
+    99
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "401/400 bodies echo full key + masked key; audit output must contain neither"
+  },
+  {
+   "id": "chat-keyecho-401",
+   "protocol": "chat",
+   "scenario": "keyecho:reject=401",
+   "expect_rc": 1,
+   "note": "every request 401 with the key echoed in the body: audit exits via sys.exit(scrub(...)); stderr must hold no key material"
+  },
+  {
+   "id": "chat-truncate_head",
+   "protocol": "chat",
+   "scenario": "truncate_head",
+   "score": [
+    77,
+    79
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.28,
+     0.32
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle MISSED"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "v1 only notices via the needle (50% depth, first half dropped); tok/char 0.165 still passes its 0.15 sanity floor"
+  },
+  {
+   "id": "chat-truncate_tail",
+   "protocol": "chat",
+   "scenario": "truncate_tail",
+   "score": [
+    83,
+    85
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "v1 BLIND: needle at 50% char position sits just inside the kept first half, so nothing is detected (98)"
+  },
+  {
+   "id": "chat-no_headers",
+   "protocol": "chat",
+   "scenario": "no_headers",
+   "score": [
+    97,
+    98
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.38,
+     0.42
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "vendor headers check -> 0.4 (weak negative)"
+  },
+  {
+   "id": "chat-weak_reasoner",
+   "protocol": "chat",
+   "scenario": "weak_reasoner",
+   "score": [
+    91,
+    93
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.23,
+     0.27
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "short question right, hard ones wrong: v1 reasoning 1/4 costs only ~6 points, verdict stays 'highly credible' (no discrimination)"
+  },
+  {
+   "id": "chat-wrongvendor",
+   "protocol": "chat",
+   "scenario": "wrongvendor",
+   "score": [
+    49,
+    51
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": true,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0,
+     0.02
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "stdout_contains": [
+    "HARD FAIL"
+   ],
+   "note": "identity claims OpenAI/ChatGPT and facts wrong -> hard_fail caps at 50"
+  },
+  {
+   "id": "chat-tokprofile:family=qwen",
+   "protocol": "chat",
+   "scenario": "tokprofile:family=qwen",
+   "score": [
+    91,
+    93
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "needle-pos variant of chat-tokprofile:family=qwen: v1 detects truncation only when the needle falls in the dropped half"
+  },
+  {
+   "id": "chat-truncate_head@0.1",
+   "protocol": "chat",
+   "scenario": "truncate_head",
+   "args": [
+    "--needle-pos",
+    "0.1"
+   ],
+   "score": [
+    71,
+    73
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.28,
+     0.32
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle MISSED"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "needle-pos variant of chat-truncate_head: v1 detects truncation only when the needle falls in the dropped half"
+  },
+  {
+   "id": "chat-truncate_head@0.9",
+   "protocol": "chat",
+   "scenario": "truncate_head",
+   "args": [
+    "--needle-pos",
+    "0.9"
+   ],
+   "score": [
+    89,
+    91
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "needle-pos variant of chat-truncate_head: v1 detects truncation only when the needle falls in the dropped half"
+  },
+  {
+   "id": "chat-truncate_tail@0.1",
+   "protocol": "chat",
+   "scenario": "truncate_tail",
+   "args": [
+    "--needle-pos",
+    "0.1"
+   ],
+   "score": [
+    89,
+    91
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.98,
+     1
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle found"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "needle-pos variant of chat-truncate_tail: v1 detects truncation only when the needle falls in the dropped half"
+  },
+  {
+   "id": "chat-truncate_tail@0.9",
+   "protocol": "chat",
+   "scenario": "truncate_tail",
+   "args": [
+    "--needle-pos",
+    "0.9"
+   ],
+   "score": [
+    71,
+    73
+   ],
+   "flags": {
+    "usage_inflated": false,
+    "hard_fail": false,
+    "crashed_checks": []
+   },
+   "checks": {
+    "format+stream": [
+     0.98,
+     1
+    ],
+    "identity+facts": [
+     0.98,
+     1
+    ],
+    "reasoning": [
+     0.98,
+     1
+    ],
+    "long context": [
+     0.28,
+     0.32
+    ],
+    "tools+json": [
+     0.98,
+     1
+    ],
+    "instruction following": [
+     0.98,
+     1
+    ],
+    "error format": [
+     0.98,
+     1
+    ],
+    "vendor headers": [
+     0.98,
+     1
+    ]
+   },
+   "check_notes": {
+    "long context": "needle MISSED"
+   },
+   "stdout_not_contains": [
+    "USAGE INFLATED"
+   ],
+   "note": "needle-pos variant of chat-truncate_tail: v1 detects truncation only when the needle falls in the dropped half"
+  }
+ ]
+}

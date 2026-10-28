@@ -1,0 +1,154 @@
+{
+  "area": "reasoning",
+  "cases": [
+    {
+      "id": "chat-reasoning-good",
+      "protocol": "chat",
+      "scenario": "good",
+      "score": [
+        97,
+        98
+      ],
+      "flags": {
+        "crashed_checks": []
+      },
+      "checks": {
+        "reasoning": [
+          1.0,
+          1.0
+        ]
+      },
+      "check_notes": {
+        "reasoning": "^easy 4/4, hard 3/3$"
+      },
+      "note": "T6: flagship stand-in answers all 7 questions (4 easy + 3 hard) correctly"
+    },
+    {
+      "id": "chat-weak_reasoner",
+      "protocol": "chat",
+      "scenario": "weak_reasoner",
+      "score": [
+        90,
+        92
+      ],
+      "flags": {
+        "crashed_checks": []
+      },
+      "checks": {
+        "reasoning": [
+          0.39,
+          0.41
+        ]
+      },
+      "check_notes": {
+        "reasoning": "^easy 4/4, hard 0/3; wrong: hard-binary-runs, hard-mod-sequence, hard-circle-elimination"
+      },
+      "note": "T6 override of the core case (same id): easy tier right, hard tier wrong -> 0.4*1 + 0.6*0 = 0.4. Total score is NOT asserted here (other checks move it; T9 realigns expected_core)."
+    },
+    {
+      "id": "chat-reasoning-paren",
+      "protocol": "chat",
+      "scenario": "good:rzn=paren",
+      "flags": {
+        "crashed_checks": []
+      },
+      "checks": {
+        "reasoning": [
+          1.0,
+          1.0
+        ]
+      },
+      "check_notes": {
+        "reasoning": "^easy 4/4, hard 3/3$"
+      },
+      "note": "hard answers like '3254 (approx., ...)' still count"
+    },
+    {
+      "id": "chat-reasoning-429-once",
+      "protocol": "chat",
+      "scenario": "good:rzn=rl_once",
+      "flags": {
+        "crashed_checks": []
+      },
+      "checks": {
+        "reasoning": [
+          1.0,
+          1.0
+        ]
+      },
+      "check_notes": {
+        "reasoning": "^easy 4/4, hard 3/3$"
+      },
+      "note": "each question 429s once; the single retry absorbs it"
+    },
+    {
+      "id": "chat-reasoning-all-429",
+      "protocol": "chat",
+      "scenario": "good:rzn=all_429",
+      "flags": {
+        "crashed_checks": []
+      },
+      "checks": {
+        "reasoning": null
+      },
+      "check_notes": {
+        "reasoning": "no gradable question"
+      },
+      "note": "every reasoning question 429s twice -> n/a, never 0"
+    },
+    {
+      "id": "chat-reasoning-hard-429",
+      "protocol": "chat",
+      "scenario": "good:rzn=hard_429",
+      "flags": {
+        "crashed_checks": []
+      },
+      "checks": {
+        "reasoning": [
+          1.0,
+          1.0
+        ]
+      },
+      "check_notes": {
+        "reasoning": "hard 0/0; not counted: hard-binary-runs \\(HTTP 429\\)"
+      },
+      "note": "hard tier not counted -> score = easy tier"
+    },
+    {
+      "id": "chat-reasoning-503",
+      "protocol": "chat",
+      "scenario": "good:rzn=one_503",
+      "flags": {
+        "crashed_checks": []
+      },
+      "checks": {
+        "reasoning": [
+          1.0,
+          1.0
+        ]
+      },
+      "check_notes": {
+        "reasoning": "hard 2/2; not counted: hard-mod-sequence \\(HTTP 503\\)"
+      },
+      "note": "a 5xx question leaves the denominator"
+    },
+    {
+      "id": "chat-reasoning-length-empty",
+      "protocol": "chat",
+      "scenario": "good:rzn=len_empty",
+      "flags": {
+        "crashed_checks": []
+      },
+      "checks": {
+        "reasoning": [
+          1.0,
+          1.0
+        ]
+      },
+      "check_notes": {
+        "reasoning": "hard 2/2.*hard-binary-runs \\(reasoning exhausted max_tokens\\).*raise --max-tokens"
+      },
+      "note": "empty text + finish=length is not counted"
+    }
+  ]
+}
