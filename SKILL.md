@@ -16,7 +16,7 @@ Black-box audit of an LLM endpoint over three wire protocols: OpenAI chat (`/cha
 - NOT for benchmarking quality between genuine models
 
 ## Workflow
-1. **Key handling:** pass the key only via env `LLM_API_KEY`; never write it to files, reports or memory. Remind the user to rotate a key that was pasted into chat.
+1. **Key handling:** pass the key only via env `LLM_API_KEY`; never write it to files, reports or memory (the only exception is the channel ledger, see Channel Ledger). Remind the user to rotate a key that was pasted into chat.
 2. **List models:** `curl -s $BASE/models -H "Authorization: Bearer $KEY"` to get the exact model ids. If the channel exposes several models, audit **every** one (run the script once per model) so the final reply can state authenticity per model. `--records 0` (skips long context) is acceptable for secondary models to save cost: the default long-context run is already ~32k tokens per model, and ~100k for windows >=128k. Run the full long-context check on the main one. Always add `--out <cwd>/<host>-<model>.json` (no key inside) so a detailed report can be written later without re-running.
 3. **Pick protocol, claim and window** (ask or infer from the user's description; do not guess silently):
    - `--protocol chat|messages|responses` (default `chat`). `messages` = Anthropic `/v1/messages` (use for Claude models behind Anthropic-style relays), `responses` = OpenAI `/responses`. `--base` must already end where the protocol path starts (usually `/v1`; the script appends `/chat/completions`, `/messages` or `/responses`); `--path` overrides that suffix for non-standard routes.
@@ -43,6 +43,7 @@ LLM_API_KEY=sk-... python ~/.claude/skills/testing-llm-endpoint-authenticity/scr
 ```
 5. **Extra checks** (manual, not in the script score): Channel Provenance, Thinking Effort Lock, Hidden System Prompt Injection (sections below).
 6. **Reply** in the fixed Final Reply Format (below); if channel availability is low, append the 总评 line. Write the md report only when the user asks (see Detailed Report).
+7. **Log to the ledger** (once per channel, all models of the channel merged into one row): run `scripts/ledger.py` with `--score` = the final channel score, one `--model <id>=真|假` per audited model (the final verdicts), `--channel 真|假`, and `--channel-type` = the type in the parentheses of the 渠道真伪 line. Key via env `LLM_API_KEY` only. For parallel multi-channel audits run it once per channel; the lock keeps concurrent writes safe. Details in Channel Ledger.
 
 ## Signals and Weights
 Scoring v2 (JSON field `scoring_version: 2`); weights live only in `scripts/scoring.py` and total 100.
@@ -151,13 +152,36 @@ Write it only when the user asks ("出报告", "要 md" ...); otherwise reply wi
 - Location and name: current working directory, `<host>-LLM接口测试报告-<YYYY-MM-DD>.md`.
 - Audience: non-technical recipients. Body text is plain, formal and low-jargon; raw numbers and technical terms are collected in the closing 「附录：技术明细」. Exact wording and the term mapping follow `report-template.md`; do not duplicate them here.
 - Content: fill `report-template.md` (same folder as this file) from the `--out` JSONs (includes `protocol` and `scoring_version`), `error_probe.py` output and the manual checks: 1 结论（四行+如有总评，含使用建议）, 2 测试内容与判定方式, 3 逐模型结果, 4 渠道来源判断, 5 风险提示, 6 说明与局限 (include the "仅 mock 验证 / 分词器表为公开近似" caveats), 附录 技术明细. Mark skipped checks as 未测; never invent numbers.
-- The key must never appear (host and model ids only).
-- Reply order: the four lines, then 总评 (if triggered), then (if an md was requested) one line with the md path.
+- The key must never appear (host and model ids only); the ledger is the only exception, see Channel Ledger.
+- Reply order: the four lines, then 总评 (if triggered), then (if an md was requested) one line with the md path, then (after ledger logging) optionally one line with the ledger path (never the key).
+
+## Channel Ledger (one row per channel, after each audit)
+After each channel is tested, upsert one row into a shared md ledger; `.csv` and `.docx` exports are regenerated alongside it (stdlib only) for import into Google Sheets/Docs.
+```bash
+LLM_API_KEY=sk-... python ~/.claude/skills/testing-llm-endpoint-authenticity/scripts/ledger.py \
+  --base https://host/v1 --score 76 --model <id1>=真 --model <id2>=假 \
+  --channel 真 --channel-type "new-api 中转" [--ledger PATH] [--time "YYYY-MM-DD HH:MM"]
+```
+PowerShell: set `$env:LLM_API_KEY='...'` first, then run the same `python ...` line without the prefix.
+
+- **Columns** (one row per channel, several models share one cell): 时间 | 站点(host) | API Key | 模型真伪 | 渠道真伪 | 评级 | 评分. Header written once.
+- **Rating** (computed by `ledger.py` automatically, never fill by hand; this table only mirrors it, `ledger.py` is the single source of truth):
+| 评级 | Condition |
+|---|---|
+| D | 渠道评分 < 60, or any model 假, or 渠道 假 |
+| C | 60-69 |
+| B | 70-84 |
+| A | >= 85 and no 假 |
+  C/D = score < 70 or any 假, i.e. the same line as the 总评 trigger.
+- **Re-test = overwrite:** same site + same key replaces the old row in place (time updated, no history kept). A different key or site appends a new row. If the key is missing (recorded as 「未记录」) nothing is overwritten; always append.
+- **Path:** `--ledger` > env `LLM_LEDGER` > `./llm-channel-ledger.md` (cwd). The path must end in `.md`; `.csv` / `.docx` are written next to it with the same stem. No path is hard-coded. If cwd is inside this skill's directory the default is refused (exit 2): pass `--ledger` or set `LLM_LEDGER`. A default path inside a git repository prints a "do not commit" warning.
+- **Import to Google:** Docs: 文件 → 打开 → 上传 → choose the `.docx`. Sheets: 文件 → 导入 → 上传 → choose the `.csv` (UTF-8 BOM, Chinese displays correctly).
+- **Key exception and guardrails:** at the user's explicit request the ledger records the full plaintext key. Only the ledger md and its csv/docx exports may contain a key; the detailed report, `--out` JSON, script stdout, chat replies and memory still must not. The key reaches `ledger.py` only via env `LLM_API_KEY`, never a command-line argument; its stdout prints only the ledger path, the masked key and the rating. The md carries a top warning (含明文 API Key，勿提交/外传). `ledger.py` refuses to write inside this skill's own directory (so keys do not leak through the skill sync repo). Concurrent writers are serialised by `<ledger>.lock` (stale locks heal after 15 s; lock timeout exits 2). In the csv, cells starting with `= + - @` get a leading `'` so Google Sheets cannot run them as formulas (md/docx keep the raw text). Exit codes: 0 ok; 2 bad argument/path/lock timeout; 1 md updated but csv/docx export failed (a program such as Excel/WPS holds the file open: close it and re-run). Files are created with mode 0600 where the OS supports it.
 
 ## Common Mistakes
 - **HTTP 403 `error code: 1010`:** Cloudflare blocks Python's default User-Agent; the script sends a curl UA. Use the same in ad-hoc calls.
 - **Windows shell mojibake:** Chinese prompts via Git Bash curl arrive garbled (inflated `prompt_tokens`, model says "message is garbled"). Send prompts from Python with UTF-8 (`PYTHONUTF8=1`).
-- **Key echoed by upstream errors:** some upstreams return a masked key (`sk-abc***wxyz`) in 401/400 bodies. Both scripts redact the key and masked echoes (`[KEY]`) from stdout and `--out` files; still never paste raw ad-hoc curl output into reports without checking. `LLM_API_KEY=... python` syntax is Bash only; in PowerShell use `$env:LLM_API_KEY='...'` first.
+- **Key echoed by upstream errors:** some upstreams return a masked key (`sk-abc***wxyz`) in 401/400 bodies. Both scripts redact the key and masked echoes (`[KEY]`) from stdout and `--out` files; still never paste raw ad-hoc curl output into reports without checking, and never echo the key in replies, JSON or stdout (the ledger files are the only exception, see Channel Ledger). `LLM_API_KEY=... python` syntax is Bash only; in PowerShell use `$env:LLM_API_KEY='...'` first.
 - **Empty `content` with reasoning models:** small `max_tokens` is consumed by reasoning; keep >=4000.
 - **Over-trusting self-identification:** fake channels also say "I am X". Weight long-context behavior, token accounting (`usage_inflated`) and the tokenizer fingerprint above the identity self-report. Response headers are only 5 points (relays legitimately strip them); use them as provenance evidence via `--claim`, not as proof of the model.
 - **Claiming certainty:** without official ground truth for a new model, state the residual uncertainty; the relay's own channel/group name (leaked in error messages) is a useful hint about self-hosting. The audit has only been validated on mock servers and the tokenizer table is an offline approximation: say so when the verdict rests on those checks.
