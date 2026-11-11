@@ -147,6 +147,8 @@ def load_hooks(directory=HERE, force=False):
             for path in sorted(glob.glob(os.path.join(directory, pattern))):
                 try:
                     mod = _import_hook(path)
+                    if getattr(mod, "NOT_A_HOOK", False):
+                        continue  # a neighbouring standalone server (e.g. mock_proto_spec.py)
                     if not hasattr(mod, attr) and not (attr == "handle" and hasattr(mod, "handle_get")):
                         raise AttributeError("module has no %s()" % attr)
                 except Exception as e:  # a broken teammate hook must not take the mock down

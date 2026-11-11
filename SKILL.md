@@ -1,6 +1,6 @@
 ---
 name: testing-llm-endpoint-authenticity
-description: Use when asked to verify whether an LLM API endpoint or relay (OpenAI-compatible chat/Responses, Anthropic Messages, new-api/one-api proxy, third-party reseller) really serves the claimed model, to score a model channel for fakes, downgrades, truncated context or wrong-vendor substitution, or to find which upstream/backend really sits behind a relay route by sending malformed requests and reading leaked upstream error strings.
+description: Use when asked to verify whether an LLM API endpoint or relay (OpenAI-compatible chat/Responses, Anthropic Messages, new-api/one-api proxy, third-party reseller) really serves the claimed model, to score a model channel for fakes, downgrades, truncated context or wrong-vendor substitution, to check how closely a channel follows the vendor's official API contract (fixed sampling params, thinking tiers, reasoning_content shape, usage billing fields, finish_reason, cache write/read, Formula tools, hidden prompt), with an optional single-file HTML report, or to find which upstream/backend really sits behind a relay route by sending malformed requests and reading leaked upstream error strings.
 ---
 
 # Testing LLM Endpoint Authenticity
@@ -8,41 +8,73 @@ description: Use when asked to verify whether an LLM API endpoint or relay (Open
 ## Overview
 Black-box audit of an LLM endpoint over three wire protocols: OpenAI chat (`/chat/completions`, default), Anthropic Messages (`/v1/messages`) and OpenAI Responses (`/responses`). Combine independent signals (provenance headers, response schema, identity/knowledge, reasoning, long context, tool calling, error format, tokenizer fingerprint) into a weighted 0-100 score (scoring v2). No single signal proves authenticity; the score is evidence, not proof.
 
-**Verification status:** the `messages` / `responses` adapters, the three-needle long-context check, the claim-driven header check, the hard reasoning tier and the tokenizer fingerprint were verified against local mock servers only; no real endpoint has been run through them. Treat the first real-endpoint results as unconfirmed and say so in the notes/limitations.
+A second, independent suite (`spec_audit.py`) scores **conformance to the vendor's official API contract** out of 15 items (0-100 `spec_score`), driven by a static model profile: fixed sampling parameters, thinking tiers and `reasoning_content`, `max_completion_tokens` limits, usage/billing fields, `finish_reason`, 5m/1h prompt cache writes, Formula tools, custom tools, structured output and hidden-prompt injection. It never changes the authenticity score. `report_html.py` renders the authenticity JSON, spec JSON and load statistics into one self-contained HTML page (Carbon styling, no external assets or JS).
+
+**Verification status:** the `messages` / `responses` adapters, the three-needle long-context check, the claim-driven header check, the hard reasoning tier and the tokenizer fingerprint were verified against local mock servers only; no real endpoint has been run through them. The profile/spec/load/HTML pipeline is likewise mock-verified. Treat the first real-endpoint results as unconfirmed and say so in the notes/limitations.
 
 ## When to Use
 - User gives a base URL + key and asks "is this model real / score it"
 - Comparing relay channels for downgrade (cheaper model behind the name)
+- Checking whether a channel honors the official API contract (parameters, thinking, cache, billing fields, tools) and wants a shareable HTML report
 - NOT for benchmarking quality between genuine models
 
 ## Workflow
-1. **Key handling:** pass the key only via env `LLM_API_KEY`; never write it to files, reports or memory. Remind the user to rotate a key that was pasted into chat.
-2. **List models:** `curl -s $BASE/models -H "Authorization: Bearer $KEY"` to get the exact model ids. If the channel exposes several models, audit **every** one (run the script once per model) so the final reply can state authenticity per model. `--records 0` (skips long context) is acceptable for secondary models to save cost: the default long-context run is already ~32k tokens per model, and ~100k for windows >=128k. Run the full long-context check on the main one. Always add `--out <cwd>/<host>-<model>.json` (no key inside) so a detailed report can be written later without re-running.
-3. **Pick protocol, claim and window** (ask or infer from the user's description; do not guess silently):
-   - `--protocol chat|messages|responses` (default `chat`). `messages` = Anthropic `/v1/messages` (use for Claude models behind Anthropic-style relays), `responses` = OpenAI `/responses`. `--base` must already end where the protocol path starts (usually `/v1`; the script appends `/chat/completions`, `/messages` or `/responses`); `--path` overrides that suffix for non-standard routes.
-   - `--claim official|bedrock|vertex|azure|relay|unknown` (default `unknown`): what the channel says it is. Drives the vendor-headers check only (see Signals).
-   - `--claimed-window 32k|128k|200k|1M`: the context window the channel advertises. Sizes the long-context probe (see Long Context Tiers). Add `--deep` only with the user's consent (1M-tier test sends ~600k tokens).
-   - `--tokenizer-family <openai|deepseek|qwen|kimi|glm|llama|gemini|claude>` optional; otherwise derived from `--vendor`, then `--model`.
-4. **Run the audit** (bundled script, stdlib only). One example per protocol:
+1. **Prepare: key, models, profile**
+   - **Key handling:** pass the key only via env `LLM_API_KEY`; never write it to files, reports or memory. Remind the user to rotate a key that was pasted into chat.
+   - **List models:** `curl -s $BASE/models -H "Authorization: Bearer $KEY"` to get the exact model ids. If the channel exposes several models, audit **every** one (run the script once per model) so the final reply can state authenticity per model. `--records 0` (skips long context) is acceptable for secondary models to save cost: the default long-context run is already ~32k tokens per model, and ~100k for windows >=128k. Run the full long-context check on the main one. Always add `--out <cwd>/<host>-<model>-audit.json` (no key inside) so a report can be written later without re-running.
+   - **Pick a profile:** `profiles/<id>.json` freezes what the official endpoint should look like — fixed sampling params, thinking tiers, token limits, expected probe results, usage schema, benchmark percentiles, targets and load parameters. `python scripts/profile.py --list`; `python scripts/profile.py <id>` validates. Pass it as `--profile <id|path>`; it fills `--model`, `--protocol` and the audit defaults (`--vendor`, `--claimed-window`, `--identity-regex`, `--fact`, `--tokenizer-family`) unless you pass them yourself. Built-in: `kimi-k3.1-pro` (alias `kimi-k3.1-pro-highspeed`). Add another vendor by copying that JSON and keeping only archived measurements — never invent numbers (`profiles/README.md`).
+   - **Official baseline ban:** official measurements were collected once (2026-11-09) and frozen. No script, test or agent may call an official host or official key again; a new baseline needs the user's explicit approval. `profile.guard_base()` refuses any `official_hosts` match in `model_audit.py --profile`, `spec_audit.py` and `load_test.py`; there is no override switch.
+2. **Authenticity audit** (bundled script, stdlib only). Profile-driven form:
 ```bash
-# chat (OpenAI-compatible)
 LLM_API_KEY=sk-... python ~/.claude/skills/testing-llm-endpoint-authenticity/scripts/model_audit.py \
-  --base https://host/v1 --model <id> --vendor moonshot --claim relay --claimed-window 128k \
-  --identity-regex "Kimi|Moonshot|月之暗面" \
-  --fact "Kimi K2 总参数和激活参数？::1T|1万亿.*32B" --out report.json
-
-# Anthropic Messages
-LLM_API_KEY=sk-... python ~/.claude/skills/testing-llm-endpoint-authenticity/scripts/model_audit.py \
-  --protocol messages --base https://host/v1 --model <claude-id> --vendor anthropic --claim bedrock \
-  --claimed-window 200k --identity-regex "Claude|Anthropic" --out report.json
-
-# OpenAI Responses
-LLM_API_KEY=sk-... python ~/.claude/skills/testing-llm-endpoint-authenticity/scripts/model_audit.py \
-  --protocol responses --base https://host/v1 --model <gpt-id> --vendor openai --claim official \
-  --claimed-window 128k --identity-regex "OpenAI|GPT|ChatGPT" --out report.json
+  --profile kimi-k3.1-pro --base https://host/v1 --model kimi-k3.1-pro \
+  --claim relay --out <host>-<model>-audit.json
 ```
-5. **Extra checks** (manual, not in the script score): Channel Provenance, Thinking Effort Lock, Hidden System Prompt Injection (sections below).
-6. **Reply** in the fixed Final Reply Format (below); if channel availability is low, append the 总评 line. Write the md report only when the user asks (see Detailed Report).
+   Without a profile, pass the audit flags yourself:
+   - `--protocol chat|messages|responses` (default `chat`, or the profile's protocol). `messages` = Anthropic `/v1/messages`, `responses` = OpenAI `/responses`. `--base` must already end where the protocol path starts (usually `/v1`; the script appends `/chat/completions`, `/messages` or `/responses`); `--path` overrides that suffix for non-standard routes.
+   - `--claim official|bedrock|vertex|azure|relay|unknown` (default `unknown`): what the channel says it is. Drives the vendor-headers check only (see Signals).
+   - `--claimed-window 32k|128k|200k|1M`: the advertised context window; sizes the long-context probe (see Long Context Tiers). Add `--deep` only with the user's consent (1M-tier test sends ~600k tokens).
+   - `--vendor`, `--tokenizer-family`, `--identity-regex`, `--fact "question::answer-regex"`: supply these when no profile covers the model.
+   - Protocol examples: chat is the profile-driven form above; for Anthropic use `--protocol messages --vendor anthropic --claim bedrock --claimed-window 200k --identity-regex "Claude|Anthropic"`; for OpenAI Responses use `--protocol responses --vendor openai --claim official --claimed-window 128k --identity-regex "OpenAI|GPT|ChatGPT"`.
+3. **Spec conformance + load** (`spec_audit.py`): runs the 15-item suite at `--tier standard` — parameter matrix, thinking tiers, reasoning shape, tools/tool_choice, usage billing schema, Formula tools, multimodal small samples, hidden-prompt probes, the 60-request load test and cache scenarios — and writes the frozen spec JSON (`profiles/README.md`):
+```bash
+LLM_API_KEY=sk-... python ~/.claude/skills/testing-llm-endpoint-authenticity/scripts/spec_audit.py \
+  --profile kimi-k3.1-pro --base https://host/v1 --model kimi-k3.1-pro \
+  --tier standard --out <host>-<model>-spec.json
+```
+   `load_test.py` produces the same `load`+`cache` blocks alone when only performance is wanted (`--help` for its flags). The standard tier spends ≈136 generation requests (load 60 + cache 19 + 57 fixed spec probes): say so before running. `spec_audit.py --dry-run` / `load_test.py --print-plan` show the plan without reading the key or sending requests. `--tier deep` only adds the 58-minute 1h-cache read-back. The 100MB video path and the ≥10-minute generation survival check are **not scripted in this version** (manual work only); report them as 未测, never as passed.
+4. **Report and reply:** render the single-file HTML from both JSONs (Carbon styling, no external assets, no JS):
+```bash
+python ~/.claude/skills/testing-llm-endpoint-authenticity/scripts/report_html.py \
+  --audit <host>-<model>-audit.json --spec <host>-<model>-spec.json \
+  --out <host>-<model>-report.html
+```
+   Then answer in the fixed four-line Final Reply Format (below), plus 总评 when availability is low. The md report from `report-template.md` remains available on request; the HTML is the default when the user asks for a report file. The manual Channel Provenance / Thinking Effort Lock / Hidden System Prompt Injection checks (sections below) still apply alongside the scripts.
+
+## Model Profiles and Spec Conformance (15 items)
+`profiles/<id>.json` is the only source of "what the official endpoint should look like"; `scripts/profile.py` loads, deep-merges CLI overrides, validates and guards it; `scripts/perf_stats.py` holds the percentile math used offline to freeze the baseline numbers. `spec_score` is independent of the authenticity score and never changes scoring v2.
+
+| # | key | w | passes when |
+|---|---|---|---|
+| 1 | `perf_baseline` | 10 | measured p50 ≤ 2× official p50 and p90 ≤ 2.5× official p90; output TPS p50 ≥ 0.5× official |
+| 2 | `ttft` | 6 | TTFT p90 ≤ 10 s (p95 shown only) |
+| 3 | `cache_hit` | 8 | from round 2 on, `cached_tokens/prompt_tokens` ≥ 85% on identical-20k, multi-turn-12k and short-1k |
+| 4 | `usage_schema` | 8 | `prompt_tokens`/`completion_tokens`/`total_tokens` present, total adds up, detail sub-keys present, tokens/char inside the profile band |
+| 5 | `thinking_params` | 10 | low/high/max accepted, default request carries `reasoning_content`, `thinking.disabled` completion ≤ 20, five fixed params legal (illegal values 400), mct 131072/1048576 accepted, full assistant message echoed on multi-turn/tools |
+| 6 | `finish_reason` | 6 | every finish ∈ {`stop`, `length`, `tool_calls`}; empty/missing is a failure; exactly one finish per stream |
+| 7 | `timeout` | 3 | 3600 s configured; ≥10-minute generation survival is not scripted (manual only; otherwise at most partial) |
+| 8 | `video` | 4 | 1MB base64 + public-URL samples work; **100MB is not scripted in this version, so at most partial** |
+| 9 | `param_matrix` | 8 | ≥95% of the ~20 probe cases match `expected_probes`, all fixed-param and mct cases correct |
+| 10 | `reasoning_content` | 6 | separate string field, reasoning tokens accounted, stream emits reasoning before content |
+| 11 | `formula_tools` | 5 | `GET /v1/formulas/moonshot/date:latest/tools` and `POST .../fibers` return 200 with tools/fiber; a no-`/v1` 404 is only a gateway note |
+| 12 | `cache_ttl` | 8 | 5m and 1h write counters/headers non-zero, 8-minute read-back hits (`--tier deep` adds the 58-minute one) |
+| 13 | `tools_choice` | 6 | custom tools under auto/none/required behave as expected, standard ids and assistant echo |
+| 14 | `structured_output` | 5 | `reasoning_content`/`content` are plain strings, no nested parts, standard `tool_calls` |
+| 15 | `hidden_prompt` | 7 | fixed overhead ≤ 40 tokens, all 6 leak probes succeed, leak rate not above the official ratio + 1/6, identity matches, ≥2 signals before judging injection |
+
+`spec_score = round(100 × Σ(weight × status) / Σ(non-skip weight))` with `pass=1`, `partial=0.5`, `fail=0`, `skip` excluded. An item is `partial` when evidence is incomplete (100MB video, 58-minute cache read-back, timeout survival not run) — those can never be `pass`. If non-skip weight is below 60% the score is `null` ("覆盖不足，不出分") rather than a misleading 100.
+
+Standard-tier budget ≈136 generation requests: load 60 (concurrency 4) + cache 19 + fixed spec probes 57. Preview a run without sending anything via `spec_audit.py --dry-run` / `load_test.py --print-plan`. Report the sample size and that p95 on 60 samples is low-confidence. `--requests` overrides the load count.
 
 ## Signals and Weights
 Scoring v2 (JSON field `scoring_version: 2`); weights live only in `scripts/scoring.py` and total 100.
@@ -147,12 +179,13 @@ Appended after the four lines only when availability is low. Trigger (any one): 
 - Examples (one reason each): `总评：该渠道所提供的模型并非其所声称的模型，可用性较低，不建议使用。` / `总评：该渠道所提供的模型为真，但响应缓慢且时有失败，可用性较低，不建议使用。`
 
 ## Detailed Report (on request)
-Write it only when the user asks ("出报告", "要 md" ...); otherwise reply with the four lines (plus 总评 if triggered) alone.
-- Location and name: current working directory, `<host>-LLM接口测试报告-<YYYY-MM-DD>.md`.
+Write it only when the user asks ("出报告", "要 md", "要 HTML" ...); otherwise reply with the four lines (plus 总评 if triggered) alone.
+- **HTML (default when a report file is wanted and both JSONs exist):** `report_html.py --audit <audit.json> --spec <spec.json> --out <host>-<model>-report.html`. Single file, Carbon styling, no external assets or JS, safe to open offline and to forward. It renders the 15-item spec list with `<details>` evidence, official-baseline deltas, p50/p90/p95, cache/billing and the authenticity checks. Missing data renders as 未测, never as zero. Every dynamic string is `html.escape`d and both JSONs are `scrub`-ed again at render time.
+- **md:** location and name: current working directory, `<host>-LLM接口测试报告-<YYYY-MM-DD>.md`.
 - Audience: non-technical recipients. Body text is plain, formal and low-jargon; raw numbers and technical terms are collected in the closing 「附录：技术明细」. Exact wording and the term mapping follow `report-template.md`; do not duplicate them here.
 - Content: fill `report-template.md` (same folder as this file) from the `--out` JSONs (includes `protocol` and `scoring_version`), `error_probe.py` output and the manual checks: 1 结论（四行+如有总评，含使用建议）, 2 测试内容与判定方式, 3 逐模型结果, 4 渠道来源判断, 5 风险提示, 6 说明与局限 (include the "仅 mock 验证 / 分词器表为公开近似" caveats), 附录 技术明细. Mark skipped checks as 未测; never invent numbers.
 - The key must never appear (host and model ids only).
-- Reply order: the four lines, then 总评 (if triggered), then (if an md was requested) one line with the md path.
+- Reply order: the four lines, then 总评 (if triggered), then (if a report was requested) one line with the report path (HTML and/or md).
 
 ## Common Mistakes
 - **HTTP 403 `error code: 1010`:** Cloudflare blocks Python's default User-Agent; the script sends a curl UA. Use the same in ad-hoc calls.

@@ -13,10 +13,12 @@ import argparse, json, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # also under `python -I`
 
+import common
+import profile
 import scoring
 import checks_headers, checks_longctx, checks_reasoning, checks_tokenizer, checks_format, checks_identity, checks_tools, checks_basic
 from adapters import Norm, ProtocolUnavailable, PROTOCOLS, get_adapter
-from common import DEFAULT_TIMEOUT, http, scrub
+from common import http, scrub
 
 # Execution order. Each entry exposes NAME (a key of scoring.WEIGHTS) and run(audit). Register a new check by appending here
 # (and adding its weight to scoring.WEIGHTS). Headers/provenance must stay after the checks that collect response headers.
@@ -39,7 +41,7 @@ class Audit:
         self.base = a.base.rstrip("/")
         self.path = getattr(a, "path", "") or self.adapter.default_path  # explicit --path overrides the adapter's path
         self.url = self.base + self.path
-        self.timeout = DEFAULT_TIMEOUT
+        self.timeout = common.get_default_timeout()  # profile.apply_timeout() may have changed it
         self.checks, self.notes, self.headers = [], [], {}
         self.calls, self.ttfbs, self.speeds = [], [], []  # performance samples (not part of the authenticity score)
         self.crashed, self.usage_inflated, self.hard_fail = [], False, None
@@ -112,8 +114,9 @@ class Audit:
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--base", required=True, help="e.g. https://host/v1")
-    p.add_argument("--model", required=True)
-    p.add_argument("--protocol", choices=PROTOCOLS, default="chat", help="wire protocol: chat=/chat/completions, messages=Anthropic /v1/messages, responses=/responses")
+    p.add_argument("--model", default="", help="model id; defaults to the profile id")
+    p.add_argument("--profile", default="", help="profile name or JSON path; fills vendor/window/identity/fact/tokenizer defaults and enforces the official-host guard")
+    p.add_argument("--protocol", choices=PROTOCOLS, default=None, help="wire protocol: chat=/chat/completions, messages=Anthropic /v1/messages, responses=/responses (default: from profile, else chat)")
     p.add_argument("--path", default="", help="override the protocol's default path (chat: /chat/completions)")
     p.add_argument("--vendor", default="", help="e.g. moonshot, openai, anthropic (selects known header prefixes)")
     p.add_argument("--header-prefix", action="append", default=[])
@@ -129,6 +132,26 @@ def main():
     p.add_argument("--max-tokens", type=int, default=4000, help="large enough for reasoning models")
     p.add_argument("--out", default="")
     a = p.parse_args()
+    profile_id = ""
+    if a.profile:
+        try:
+            prof = profile.load(a.profile)
+        except (OSError, ValueError) as e:
+            sys.exit("error: %s" % e)
+        profile_id = prof["id"]
+        profile.guard_base(prof, a.base)  # no override: refuse official baseline hosts before any request
+        d = prof.get("audit_defaults") or {}
+        a.model = a.model or prof["id"]
+        a.protocol = a.protocol or prof.get("protocol", "chat")
+        a.vendor = a.vendor or prof.get("vendor", "")
+        a.claimed_window = a.claimed_window or d.get("claimed_window", "")
+        a.tokenizer_family = a.tokenizer_family or d.get("tokenizer_family", "")
+        a.identity_regex = a.identity_regex or d.get("identity_regex", "")
+        a.fact = a.fact or list(d.get("facts") or [])
+        profile.apply_timeout(prof)  # must precede Audit(), which snapshots common.get_default_timeout()
+    if not a.model:
+        sys.exit("error: --model is required when no --profile is given")
+    a.protocol = a.protocol or "chat"
     try:
         adapter = get_adapter(a.protocol, a.model)
     except ProtocolUnavailable as e:
@@ -139,6 +162,7 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8")
     key = os.environ["LLM_API_KEY"]
     r = Audit(a, adapter).run()
+    r["profile"] = profile_id
 
     def out(line):
         print(scrub(line, key))

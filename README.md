@@ -4,6 +4,8 @@
 
 本项目是一个 Claude Code 技能，用于检测第三方大模型接口（包括各类中转站、转售渠道）是否真正提供了其所宣称的模型，并尽可能判断接口背后实际使用的服务方。支持三种协议：OpenAI `/chat/completions`、Anthropic `/v1/messages`、OpenAI `/responses`（`--protocol chat|messages|responses`）。
 
+在此基础上，技能还提供两套附加能力：用内置画像（`profiles/`）核对渠道对官方接口规范的遵守程度（`scripts/spec_audit.py`，15 项、独立 `spec_score`），以及把真实性与规范结果渲染成一页单文件 HTML 报告（`scripts/report_html.py`）。
+
 > **当前为评分 v2（`scoring_version=2`）**：权重与检测项已调整，与早期版本的分数不可比较。全部功能目前只在模拟接口（`tests/mock_llm.py`）上验证，尚未经过真实接口的系统校准，请把分数当作证据而非定论。
 
 检测只依赖对接口的正常调用，不需要获得服务方内部信息。结果以证据形式给出，不构成对真实性的绝对证明。
@@ -70,6 +72,32 @@
 
 应至少有两项迹象同时出现才下结论，并尽量以同一厂商的官方接口作为对照。
 
+### 四、官方规范符合度（`scripts/spec_audit.py`）
+
+真实性评分回答"是不是它"，规范符合度回答"它像不像官方接口"。两者独立计分，规范分低通常意味着渠道改写、限流或降级，而不是模型一定为假。
+
+**画像（profile）**：`profiles/<id>.json` 把"官方端点应该是什么样"冻结成静态数据——固定采样参数、思考档位、token 上限、探测用例预期、usage 结构、性能基准分位数、达标线与负载参数。首个内置画像为 `kimi-k3.1-pro`（含 `kimi-k3.1-pro-highspeed` 变体）。画像基准来自 2026-11-09 的官方实测存档；**任何脚本、测试、agent 都不得再调用官方 key 或官方端点**，需要新基准须先征得用户同意。`profile.guard_base()` 命中 `official_hosts` 即拒绝运行，没有覆盖开关。
+
+| 文件 | 作用 |
+|---|---|
+| `scripts/profile.py` | 加载、深合并覆盖、结构校验、官方端点守卫 |
+| `scripts/perf_stats.py` | 分位数 / TPOT / TPS / TPM 纯函数（画像数字由它离线算出） |
+| `scripts/load_test.py` | 标准档负载与缓存场景，单独输出 `load`+`cache` 块 |
+| `scripts/spec_checks.py` | 15 项规范判定（纯逻辑，输入为已采集的响应记录） |
+| `scripts/spec_audit.py` | 编排参数矩阵、工具、多模态、Formula、注入探测与负载，输出规范 JSON |
+
+15 项及权重：官方基准 10、TTFT 6、缓存命中 8、计费字段 8、思考与参数 10、finish_reason 6、超时 3、视频 4、参数矩阵 8、reasoning_content 6、Formula 5、缓存 TTL 8、工具选择 6、结构化输出 5、隐藏提示词 7。
+
+- `spec_score = round(100 × Σ(权重×状态) / Σ(非 skip 权重))`，通过 1、部分 0.5、失败 0、跳过不计。非 skip 权重低于 60% 时不出分（`score: null`），避免"两项通过也得满分"。
+- 证据不全的项只能记"部分"：100MB 视频、58 分钟缓存回读、未实跑的长生成存活验证，均不得记为通过。
+- 标准档约 136 次生成请求（负载 60 + 缓存 19 + 规范固定探测 57），运行前会先说明；`spec_audit.py --dry-run` / `load_test.py --print-plan` 可先查看计划且不发送请求。60 个样本的 p95 置信度低，报告会注明。
+
+### 五、单文件 HTML 报告（`scripts/report_html.py`）
+
+把真实性 JSON（`model_audit.py --out`）与规范 JSON（`spec_audit.py --out`）渲染成一个 HTML 文件：Carbon 设计语言、系统字体、无外部资源、无 JS，可离线打开和转发。内容依次为：评分概览（真实性、规范符合度、性能达标、成功率）、核心标准（官方基准 p50/p90/p95 偏差、TTFT、缓存、成功率、TPOT）、全部指标、官方基准对标、15 项规范清单（证据折叠）、计费与缓存、真实性与渠道。缺失数据渲染为"未测"，不补零；渲染前对两份 JSON 再做 `scrub`，所有动态字符串 `html.escape`，报告中只出现主机名。
+
+Markdown 报告（`report-template.md`）仍然保留，二者结论必须一致。
+
 ## 安装
 
 将本仓库复制到 Claude Code 的技能目录：
@@ -89,8 +117,22 @@ LLM_API_KEY=sk-... python scripts/model_audit.py \
   --identity-regex "Kimi|Moonshot|月之暗面" \
   --fact "Kimi K2 的总参数量和激活参数量分别是多少？::1T|1万亿|32B" --out report.json
 
+# 使用内置画像（自动填充模型名、协议、身份、事实题、窗口、分词器家族，并拒绝官方端点）
+LLM_API_KEY=sk-... python scripts/model_audit.py \
+  --profile kimi-k3.1-pro --base https://host/v1 --claim relay --out kimi-audit.json
+
 # Anthropic 协议
-LLM_API_KEY=sk-... python scripts/model_audit.py \n  --base https://host/v1 --model <模型名> --protocol messages --vendor anthropic \n  --identity-regex "Claude|Anthropic" --out report.json
+LLM_API_KEY=sk-... python scripts/model_audit.py \
+  --base https://host/v1 --model <模型名> --protocol messages --vendor anthropic \
+  --identity-regex "Claude|Anthropic" --out report.json
+
+# 规范符合度 + 标准档负载（15 项，约 136 次生成请求）
+LLM_API_KEY=sk-... python scripts/spec_audit.py \
+  --profile kimi-k3.1-pro --base https://host/v1 --tier standard --out kimi-spec.json
+
+# 单文件 HTML 报告（真实性 + 规范）
+python scripts/report_html.py \
+  --audit kimi-audit.json --spec kimi-spec.json --out kimi-report.html
 
 # 错误信息探测（可多次使用 --model 以对比不同模型）
 LLM_API_KEY=sk-... python scripts/error_probe.py \
@@ -111,7 +153,12 @@ LLM_API_KEY=sk-... python scripts/error_probe.py \
 `tests/` 下有模拟接口和回归矩阵（三协议 × 多种场景），只使用假密钥，不联网：
 
 ```bash
-python tests/regress.py --jobs 6
+python tests/regress.py --jobs 6           # 既有真实性回归
+python tests/selftest_perf_stats.py        # 分位数 / TPOT / TPM 纯函数
+python tests/selftest_spec.py              # 规范套件（fixture 模式：score=89）
+python tests/selftest_spec.py --live-mock  # good mock 端到端（12 pass + 7/8/12 partial，score 92）
+python tests/selftest_spec.py --bad        # 规范套件（mock bad 模式，按预期失败）
+python tests/selftest_report_html.py       # HTML 渲染结构、转义、无外链、无 key
 ```
 
 ## 运行环境

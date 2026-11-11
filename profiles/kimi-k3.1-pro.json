@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "id": "kimi-k3.1-pro",
+  "display_name": "Kimi K3.1 Pro",
+  "vendor": "moonshot",
+  "protocol": "chat",
+  "aliases": ["kimi-k3.1-pro", "kimi-k3.1-pro-highspeed"],
+  "official_hosts": ["api.moonshot.cn"],
+  "audit_defaults": {
+    "identity_regex": "Kimi|Moonshot|月之暗面",
+    "facts": [
+      "What is the capital of France?::Paris",
+      "What is 2+2?::4"
+    ],
+    "claimed_window": "1M",
+    "tokenizer_family": "kimi"
+  },
+  "baseline_source": {
+    "collected": "2026-11-09",
+    "derived_from": "official_k31_baseline.json",
+    "note": "静态存档（仓库外：渠道测试工作目录 baseline/），2026-11-09 用官方 key 实测；使用时一律不得再调用官方 key，需要新基准须先征得用户同意"
+  },
+  "params": {
+    "fixed": {
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "n": 1,
+      "presence_penalty": 0,
+      "frequency_penalty": 0
+    },
+    "thinking": {
+      "tiers": ["low", "high", "max"],
+      "default": "max",
+      "always_on": true,
+      "any_effort_string_accepted": true,
+      "disabled_completion_tokens_max": 20
+    },
+    "max_completion_tokens": {
+      "default": 131072,
+      "max": 1048576,
+      "official_accepts_over_max": true
+    },
+    "timeout_s": 3600
+  },
+  "expected_probes": {
+    "P:temp_1.0": {"status": 200},
+    "P:temp_0.6": {"status": 400},
+    "P:top_p_0.95": {"status": 200},
+    "P:top_p_0.8": {"status": 400},
+    "P:n_1": {"status": 200},
+    "P:n_2": {"status": 400},
+    "P:presence_0": {"status": 200},
+    "P:presence_0.5": {"status": 400},
+    "P:frequency_0": {"status": 200},
+    "P:frequency_0.5": {"status": 400},
+    "P:effort_low": {"status": 200},
+    "P:effort_high": {"status": 200},
+    "P:effort_max": {"status": 200},
+    "P:thinking_disabled": {"status": 200, "completion_tokens_max": 20},
+    "P:mct_131072": {"status": 200},
+    "P:mct_1048576": {"status": 200},
+    "P:mct_1048577": {"status": 200, "note": "官方对超过上限的值也返回 200；照实记录，不作为造假证据"},
+    "T:choice_none": {"ok": true},
+    "T:choice_required": {"ok": true},
+    "T:choice_specified": {"status": 400, "note": "指定具体函数与 thinking 不兼容（官方行为）"},
+    "E:formula_tools_v1": {"ok": true},
+    "E:formula_tools_noV1": {"status": 404, "note": "无 /v1 前缀的 404 只记为网关差异"}
+  },
+  "usage_schema": {
+    "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
+    "details": {
+      "prompt_tokens_details": ["cached_tokens", "cache_write_tokens"],
+      "completion_tokens_details": ["reasoning_tokens"]
+    },
+    "cached_tokens_on_hit_only": true,
+    "headers": ["msh-usage-cache-write-tokens-5m", "msh-usage-cache-write-tokens-1h"],
+    "token_ratio_range": {"min": 0.15, "max": 0.6}
+  },
+  "baseline": {
+    "short_latency_samples": {
+      "kimi-k3.1-pro": {
+        "n": 30,
+        "source": "baseline_official/baseline/official_k31_baseline.json#short_latency.kimi-k3.1-pro",
+        "ttft": [5.947143, 2.479799, 5.210899, 3.993375, 1.98798, 2.437752, 1.794122, 1.865979, 3.293096, 4.812001, 3.481053, 1.58287, 3.282179, 1.534163, 1.415875, 3.199095, 1.980212, 1.212989, 3.169333, 5.734164, 3.717614, 3.645344, 2.397325, 1.504557, 1.995574, 1.309922, 3.788627, 1.348173, 2.414071, 4.8419],
+        "total": [9.212029, 6.605097, 9.18712, 8.102357, 4.797091, 5.529404, 5.116138, 5.2414, 6.589169, 9.541548, 6.934143, 4.929065, 6.408317, 4.603111, 4.394778, 5.762795, 5.959836, 4.307693, 6.027294, 8.959467, 6.989479, 7.296479, 5.996715, 4.805443, 4.784124, 5.174741, 7.474325, 4.502767, 6.908681, 8.376339],
+        "tps": [36.754719, 29.088806, 30.17941, 29.204312, 42.718147, 38.814192, 36.122644, 35.551123, 36.406958, 25.372405, 34.751486, 35.861626, 38.386025, 39.101343, 40.283288, 46.807336, 30.153608, 38.775914, 41.987974, 37.205799, 36.676328, 32.866486, 33.338984, 36.353879, 43.033112, 31.049323, 32.558279, 38.039767, 26.698648, 33.951641],
+        "ct": 120,
+        "fin": "length"
+      },
+      "kimi-k3.1-pro-highspeed": {
+        "n": 30,
+        "source": "baseline_official/baseline/official_k31_baseline.json#short_latency.kimi-k3.1-pro-highspeed",
+        "ttft": [2.501478, 2.004046, 2.44499, 3.148185, 2.495773, 2.286029, 3.485878, 2.695935, 2.358069, 2.029755, 2.668881, 2.295675, 2.238703, 2.978902, 2.465666, 2.580812, 2.445431, 2.429558, 2.629384, 2.914363, 1.964909, 2.553703, 3.258991, 2.574211, 2.124476, 2.809784, 2.510989, 2.274831, 2.474465, 2.046107],
+        "total": [3.121617, 2.68329, 3.011269, 3.894563, 3.070084, 2.925968, 3.934208, 3.839003, 2.770625, 2.473275, 3.471833, 2.981789, 2.691833, 3.654294, 3.079242, 3.128333, 2.958842, 2.867456, 3.198521, 3.536712, 2.922858, 3.154052, 3.868475, 3.047842, 2.935084, 3.459067, 2.924549, 2.943505, 3.281241, 2.382403],
+        "tps": [193.504892, 176.667176, 211.909612, 160.776404, 208.945931, 187.517922, 267.6596, 104.98058, 290.869146, 270.562438, 149.448525, 174.89797, 264.824939, 177.674555, 195.574587, 219.16963, 233.730959, 274.03632, 210.845419, 192.817923, 125.26767, 199.883672, 196.887873, 253.361973, 148.037002, 184.819477, 290.163352, 179.459457, 148.74003, 356.827916],
+        "ct": 120,
+        "fin": "length"
+      }
+    },
+    "percentiles": {
+      "ttft_s": {"p50": 2.459, "p90": 4.879, "p95": 5.499},
+      "latency_s": {"p50": 6.012, "p90": 8.982, "p95": 9.201},
+      "tpot_ms": {"p50": 27.827, "p90": 34.543, "p95": 36.373},
+      "output_tps": {"p50": 36.238, "p90": 42.061, "p95": 42.891}
+    },
+    "percentiles_by_model": {
+      "kimi-k3.1-pro-highspeed": {
+        "ttft_s": {"p50": 2.485, "p90": 2.996, "p95": 3.209},
+        "latency_s": {"p50": 3.059, "p90": 3.842, "p95": 3.883},
+        "tpot_ms": {"p50": 5.139, "p90": 6.783, "p95": 7.493},
+        "output_tps": {"p50": 196.231, "p90": 275.649, "p95": 290.552}
+      }
+    },
+    "cache": {"identical_20k": 99.5, "multiturn_12k": 98.4, "short_1k": 94.5},
+    "reasoning_style": {
+      "kimi-k3.1-pro": {
+        "n_traces": 91,
+        "article_rate_mean": 0.0338,
+        "article_rate_min_max": [0.0, 0.154],
+        "top_openers": ["I need respond", "Kimi will respond", "I should respond", "Kimi needs to", "I'll respond to", "I'll respond with"]
+      },
+      "kimi-k3.1-pro-highspeed": {
+        "n_traces": 87,
+        "article_rate_mean": 0.0259,
+        "article_rate_min_max": [0.0, 0.176],
+        "top_openers": ["I need respond", "Kimi will respond", "I should respond", "I'll respond to", "Kimi needs to", "Kimi should respond"]
+      }
+    },
+    "hidden_prompt_mentions": {"kimi-k3.1-pro": "2/6", "kimi-k3.1-pro-highspeed": "0/6"}
+  },
+  "targets": {
+    "ttft_p90_max_s": 10,
+    "cache_hit_min_pct": 85,
+    "perf_p50_ratio_max": 2.0,
+    "perf_p90_ratio_max": 2.5,
+    "spec_score_min": 80
+  },
+  "load_test": {
+    "requests": 60,
+    "concurrency": 4,
+    "prompt_chars": 900,
+    "max_completion_tokens": 512,
+    "cache_repeats_20k": 6
+  }
+}

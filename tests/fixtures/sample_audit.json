@@ -1,0 +1,72 @@
+{
+  "profile": "kimi-k3.1-pro",
+  "model": "kimi-k3.1-pro",
+  "protocol": "chat",
+  "scoring_version": 2,
+  "score": 96,
+  "verdict": "highly credible",
+  "hard_fail": null,
+  "checks": [
+    {
+      "name": "vendor headers",
+      "weight": 5,
+      "score": 1.0,
+      "note": "server header family matches moonshot-style gateway; no conflicting CDN/vendor markers"
+    },
+    {
+      "name": "format+stream",
+      "weight": 10,
+      "score": 1.0,
+      "note": "OpenAI chat shape, SSE deltas well-formed, [DONE] terminator present"
+    },
+    {
+      "name": "identity+facts",
+      "weight": 15,
+      "score": 1.0,
+      "note": "self-identifies as Kimi / Moonshot; both sanity facts answered correctly"
+    },
+    {
+      "name": "reasoning",
+      "weight": 15,
+      "score": 1.0,
+      "note": "reasoning_content present by default, string typed, reasoning_tokens accounted"
+    },
+    {
+      "name": "long context",
+      "weight": 25,
+      "score": 1.0,
+      "note": "needle at 0/50/100% recovered at ~96k tokens; claimed 1M window not disproven at this depth"
+    },
+    {
+      "name": "tools+json",
+      "weight": 10,
+      "score": 1.0,
+      "note": "function call emitted with get_weather_<i>_<8hex> id, JSON mode returns valid object"
+    },
+    {
+      "name": "instruction following",
+      "weight": 5,
+      "score": 1.0,
+      "note": "format constraint honored across 3 probe variants"
+    },
+    {
+      "name": "error format",
+      "weight": 5,
+      "score": 1.0,
+      "note": "malformed request returns OpenAI-style error envelope"
+    },
+    {
+      "name": "tokenizer",
+      "weight": 10,
+      "score": 0.6,
+      "note": "token/char ratio inside kimi family range but drift at the edge; family match only, not a hard fail"
+    }
+  ],
+  "notes": [
+    "fixture 仅供渲染与自测，不代表任何真实渠道结果"
+  ],
+  "performance": 100,
+  "performance_detail": "success 24/24; ttfb 2.9s; speed 34 tok/s",
+  "usage_inflated": false,
+  "crashed_checks": []
+}

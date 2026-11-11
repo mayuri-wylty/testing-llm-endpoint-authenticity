@@ -1,0 +1,404 @@
+{
+  "profile": "kimi-k3.1-pro",
+  "model": "kimi-k3.1-pro",
+  "protocol": "chat",
+  "tested_at": "2026-11-11T12:00:00+08:00",
+  "host": "relay.example.com",
+  "tier": "standard",
+  "spec": {
+    "version": 1,
+    "score": 89,
+    "items": [
+      {
+        "id": 1,
+        "key": "perf_baseline",
+        "title": "符合官方基准 p50/p90/p95",
+        "weight": 10,
+        "status": "pass",
+        "measured": {
+          "ttft_p50_ratio": 1.261,
+          "ttft_p90_ratio": 1.312,
+          "latency_p50_ratio": 1.233,
+          "latency_p90_ratio": 1.125,
+          "tpot_p50_ratio": 1.121,
+          "output_tps_p50_ratio": 0.914
+        },
+        "expected": {"p50_ratio_max": 2.0, "p90_ratio_max": 2.5, "output_tps_p50_ratio_min": 0.5},
+        "delta": {"p50_margin": 0.739, "p90_margin": 1.188},
+        "evidence": [
+          "load.percentiles.ttft_s p50=3.101 p90=6.402",
+          "画像 baseline.percentiles.ttft_s p50=2.459 p90=4.879"
+        ],
+        "note": "四个分位数指标均落在官方基准的 p50≤2×、p90≤2.5× 范围内。"
+      },
+      {
+        "id": 2,
+        "key": "ttft",
+        "title": "TTFT 小于 10s",
+        "weight": 6,
+        "status": "pass",
+        "measured": {"p90_s": 6.402, "p95_s": 7.748},
+        "expected": {"p90_max_s": 10},
+        "delta": {"margin_s": 3.598},
+        "evidence": ["60 次流式请求首 delta 统计"],
+        "note": "P90 首字 6.4s，低于 10s 目标；P95 仅展示不设阈值。"
+      },
+      {
+        "id": 3,
+        "key": "cache_hit",
+        "title": "缓存命中 ≥ 85%",
+        "weight": 8,
+        "status": "pass",
+        "measured": {"identical_20k_pct": 99.6, "multiturn_12k_pct": 98.8, "short_1k_pct": 93.1},
+        "expected": {"min_pct": 85},
+        "delta": {"margin_pct": 8.1},
+        "evidence": [
+          "A_identical_20k 第 2 轮起 cached_tokens/prompt_tokens 稳定在 99%+",
+          "C_short_1k 最低 93.1%"
+        ],
+        "note": "三类缓存场景均高于 85% 目标。"
+      },
+      {
+        "id": 4,
+        "key": "usage_schema",
+        "title": "usage 计费字段和官网一样",
+        "weight": 8,
+        "status": "pass",
+        "measured": {
+          "required_present": true,
+          "total_matches": true,
+          "detail_keys_present": true,
+          "cache_write_tokens_present": true,
+          "token_ratio": 0.34
+        },
+        "expected": {
+          "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
+          "details": {"prompt_tokens_details": ["cached_tokens", "cache_write_tokens"], "completion_tokens_details": ["reasoning_tokens"]},
+          "token_ratio_range": [0.15, 0.6]
+        },
+        "delta": {"missing_keys": []},
+        "evidence": ["非流式/流式/缓存请求 usage 均含三段式与明细子键"],
+        "note": "计费字段结构与官方一致，token/char 落在合理区间。"
+      },
+      {
+        "id": 5,
+        "key": "thinking_params",
+        "title": "思考档位与固定参数",
+        "weight": 10,
+        "status": "pass",
+        "measured": {
+          "tiers_ok": ["low", "high", "max"],
+          "default_tier": "max",
+          "default_has_reasoning": true,
+          "disabled_completion_tokens": 13,
+          "fixed_params_ok": true,
+          "mct_ok": true,
+          "assistant_echo_ok": true
+        },
+        "expected": {
+          "tiers": ["low", "high", "max"],
+          "default": "max",
+          "disabled_completion_tokens_max": 20,
+          "max_completion_tokens": [131072, 1048576],
+          "fixed": {"temperature": 1.0, "top_p": 0.95, "n": 1, "presence_penalty": 0, "frequency_penalty": 0}
+        },
+        "delta": {},
+        "evidence": [
+          "low/high/max 均 200 且默认请求带 reasoning_content",
+          "thinking.disabled 时 completion_tokens=13",
+          "多轮与工具回传完整 assistant message 后上下文保留"
+        ],
+        "note": "档位、固定参数、token 上限与完整回传均符合官方行为。"
+      },
+      {
+        "id": 6,
+        "key": "finish_reason",
+        "title": "finish_reason 正常",
+        "weight": 6,
+        "status": "pass",
+        "measured": {"stop": 44, "length": 16, "tool_calls": 0, "empty": 0, "other": 0},
+        "expected": {"allowed": ["stop", "length", "tool_calls"], "empty_is_failure": true},
+        "delta": {},
+        "evidence": ["60 次请求 finish_reason 全部为 stop/length", "流式响应恰有一个 finish 且出现在 [DONE] 前"],
+        "note": "无空串或缺失的 finish_reason。"
+      },
+      {
+        "id": 7,
+        "key": "timeout",
+        "title": "超时 3600s",
+        "weight": 3,
+        "status": "partial",
+        "measured": {"configured_s": 3600, "long_generation_survival": "未测"},
+        "expected": {"configured_s": 3600, "survive_min_s": 600},
+        "delta": {},
+        "evidence": ["客户端默认超时已按画像设为 3600s"],
+        "note": "客户端配置已满足；长连接实际存活未测，因此不给满分。"
+      },
+      {
+        "id": 8,
+        "key": "video",
+        "title": "视频 base64 / 公网 URL（100MB）",
+        "weight": 4,
+        "status": "partial",
+        "measured": {
+          "image_b64_ok": true,
+          "video_b64_1mb_ok": true,
+          "video_url_ok": true,
+          "video_100mb": "未测"
+        },
+        "expected": {"video_100mb": "base64 与公网 URL 均可"},
+        "delta": {},
+        "evidence": ["1MB base64 视频与公网 URL 均 200 且描述相关"],
+        "note": "100MB 路径未实测，按规则最高只能判 partial。"
+      },
+      {
+        "id": 9,
+        "key": "param_matrix",
+        "title": "参数尽量和官网保持一致",
+        "weight": 8,
+        "status": "pass",
+        "measured": {"cases": 22, "matched": 22, "match_pct": 100.0, "key_cases_ok": true},
+        "expected": {"match_pct_min": 95, "key_cases_required": true},
+        "delta": {},
+        "evidence": ["22 例参数矩阵与画像 expected_probes 全部一致"],
+        "note": "固定参数非法值正确 400，合法值与 token 上限正确 200。"
+      },
+      {
+        "id": 10,
+        "key": "reasoning_content",
+        "title": "reasoning_content 与官方一致",
+        "weight": 6,
+        "status": "pass",
+        "measured": {
+          "field_present": true,
+          "string_type": true,
+          "independent_from_content": true,
+          "stream_order": ["reasoning", "content"],
+          "reasoning_tokens": 842
+        },
+        "expected": {"field": "reasoning_content", "type": "string", "stream_order": ["reasoning", "content"], "reasoning_tokens_positive": true},
+        "delta": {},
+        "evidence": ["非流式与流式均返回独立字符串 reasoning_content", "completion_tokens_details.reasoning_tokens=842"],
+        "note": "推理通道结构与官方一致，计费上也有对应记账。"
+      },
+      {
+        "id": 11,
+        "key": "formula_tools",
+        "title": "官方工具通过 Formula 接入",
+        "weight": 5,
+        "status": "pass",
+        "measured": {"tools_status": 200, "tools_count": 3, "fibers_ok": true, "no_v1_status": 404},
+        "expected": {"tools_status": 200, "fibers_ok": true, "no_v1_note": "网关差异"},
+        "delta": {},
+        "evidence": ["GET /v1/formulas/moonshot/date:latest/tools 返回 3 个工具", "POST .../fibers 200"],
+        "note": "Formula 接入可用；无 /v1 前缀 404 仅记为网关差异。"
+      },
+      {
+        "id": 12,
+        "key": "cache_ttl",
+        "title": "支持 5m / 1h 缓存与缓存写入",
+        "weight": 8,
+        "status": "partial",
+        "measured": {
+          "ttl_5m_write_tokens": 20144,
+          "ttl_1h_write_tokens": 20080,
+          "ttl_1h_header": "20080",
+          "read_back_after_s": 480,
+          "read_back_hit_pct": 97.2,
+          "read_back_58m": "未测"
+        },
+        "expected": {"write_tokens_positive": true, "headers_present": true, "read_back_hit_pct_min": 85, "read_back_58m": "可选"},
+        "delta": {},
+        "evidence": [
+          "响应头 msh-usage-cache-write-tokens-5m=20144 / -1h=20080",
+          "8 分钟后回读命中 97.2%"
+        ],
+        "note": "5m 与 1h 写入计数、响应头、8 分钟回读均通过；58 分钟回读未测。"
+      },
+      {
+        "id": 13,
+        "key": "tools_choice",
+        "title": "支持自定义工具与 tool_choice",
+        "weight": 6,
+        "status": "pass",
+        "measured": {
+          "auto_tool_calls": true,
+          "none_no_calls": true,
+          "required_calls": true,
+          "specified_fn_status": 400,
+          "tool_call_id_shape": "get_weather_0_3f9a1c22"
+        },
+        "expected": {"auto": "tool_calls", "none": "no calls", "required": "calls", "specified_fn": "按官方行为"},
+        "delta": {},
+        "evidence": ["auto 触发 get_weather 且 finish=tool_calls", "none 不调用；required 必调用"],
+        "note": "自定义工具与 tool_choice 行为符合官方；指定函数与 thinking 组合按官方返回 400。"
+      },
+      {
+        "id": 14,
+        "key": "structured_output",
+        "title": "标准结构化输出 reasoning_content",
+        "weight": 5,
+        "status": "pass",
+        "measured": {
+          "reasoning_is_string": true,
+          "content_is_string": true,
+          "nested_parts": false,
+          "tool_calls_standard": true
+        },
+        "expected": {"reasoning": "string", "content": "string", "nested_parts": false},
+        "delta": {},
+        "evidence": ["非流式与流式 message 结构一致，无嵌套 parts"],
+        "note": "输出结构与官方标准一致。"
+      },
+      {
+        "id": 15,
+        "key": "hidden_prompt",
+        "title": "隐藏提示词注入与身份",
+        "weight": 7,
+        "status": "partial",
+        "measured": {
+          "fixed_overhead_tokens": 12,
+          "leak_rate": "1/6",
+          "official_leak_rate": "2/6",
+          "identity_match": true,
+          "extraction_attempt": "未测",
+          "probe_successes": 6,
+          "probe_total": 6
+        },
+        "expected": {"overhead_max_tokens": 40, "leak_rate_max": "官方比率 + 1/6", "identity": "Kimi|Moonshot|月之暗面"},
+        "delta": {"leak_rate_vs_official": -0.167},
+        "evidence": ["6 次推理中 1 次提及系统提示，低于官方 2/6", "身份自述 Kimi / Moonshot"],
+        "note": "未发现强注入迹象；复述探测未测，故判 partial。"
+      }
+    ]
+  },
+  "params": {
+    "matrix": [
+      {"case": "P:temp_1.0", "expected_status": 200, "actual_status": 200, "match": true, "detail": "合法固定值"},
+      {"case": "P:temp_0.6", "expected_status": 400, "actual_status": 400, "match": true, "detail": "非官方值被拒绝"},
+      {"case": "P:top_p_0.95", "expected_status": 200, "actual_status": 200, "match": true, "detail": "合法固定值"},
+      {"case": "P:top_p_0.8", "expected_status": 400, "actual_status": 400, "match": true, "detail": "非官方值被拒绝"},
+      {"case": "P:n_1", "expected_status": 200, "actual_status": 200, "match": true, "detail": "合法固定值"},
+      {"case": "P:n_2", "expected_status": 400, "actual_status": 400, "match": true, "detail": "非官方值被拒绝"},
+      {"case": "P:presence_0", "expected_status": 200, "actual_status": 200, "match": true, "detail": "合法固定值"},
+      {"case": "P:presence_0.5", "expected_status": 400, "actual_status": 400, "match": true, "detail": "非官方值被拒绝"},
+      {"case": "P:frequency_0", "expected_status": 200, "actual_status": 200, "match": true, "detail": "合法固定值"},
+      {"case": "P:frequency_0.5", "expected_status": 400, "actual_status": 400, "match": true, "detail": "非官方值被拒绝"},
+      {"case": "P:effort_low", "expected_status": 200, "actual_status": 200, "match": true, "detail": "低档可用"},
+      {"case": "P:effort_high", "expected_status": 200, "actual_status": 200, "match": true, "detail": "高档可用"},
+      {"case": "P:effort_max", "expected_status": 200, "actual_status": 200, "match": true, "detail": "默认档可用"},
+      {"case": "P:thinking_disabled", "expected_status": 200, "actual_status": 200, "match": true, "detail": "completion_tokens=13 <= 20"},
+      {"case": "P:mct_131072", "expected_status": 200, "actual_status": 200, "match": true, "detail": "默认上限"},
+      {"case": "P:mct_1048576", "expected_status": 200, "actual_status": 200, "match": true, "detail": "最大上限"},
+      {"case": "P:mct_1048577", "expected_status": 200, "actual_status": 200, "match": true, "detail": "官方对超上限也返回 200"},
+      {"case": "T:choice_none", "expected_status": 200, "actual_status": 200, "match": true, "detail": "none 不调用工具"},
+      {"case": "T:choice_required", "expected_status": 200, "actual_status": 200, "match": true, "detail": "required 必调用"},
+      {"case": "T:choice_specified", "expected_status": 400, "actual_status": 400, "match": true, "detail": "指定函数与 thinking 不兼容，官方同样 400"},
+      {"case": "E:formula_tools_v1", "expected_status": 200, "actual_status": 200, "match": true, "detail": "tools=3"},
+      {"case": "E:formula_tools_noV1", "expected_status": 404, "actual_status": 404, "match": true, "detail": "无 /v1 前缀 404，记为网关差异"}
+    ]
+  },
+  "probes": {
+    "usage": {"required_present": true, "total_matches": true, "details_present": true, "cache_write_present": true, "token_ratio": 0.34},
+    "thinking": {"tiers_ok": ["low", "high", "max"], "default_reasoning": true, "disabled_completion_tokens": 13, "fixed_ok": true, "mct_ok": true, "assistant_echo_ok": true},
+    "reasoning": {"present": true, "is_string": true, "independent": true, "stream_order": ["reasoning", "content"], "reasoning_tokens": 842},
+    "structured": {"reasoning_is_string": true, "content_is_string": true, "nested_parts": false, "tool_calls_standard": true},
+    "tools": {"auto_calls": true, "none_no_calls": true, "required_calls": true, "specified_fn_status": 400, "id_shape": "get_weather_0_3f9a1c22"},
+    "timeout": {"configured_s": 3600, "long_generation_survival": "未测"}
+  },
+  "load": {
+    "samples": 60,
+    "success": 60,
+    "success_rate": 100.0,
+    "percentiles": {
+      "latency_s": {"p50": 7.412, "p90": 10.104, "p95": 11.203, "n": 60, "min": 4.902, "max": 11.884},
+      "ttft_s": {"p50": 3.101, "p90": 6.402, "p95": 7.748, "n": 60, "min": 1.402, "max": 8.215},
+      "tpot_ms": {"p50": 31.204, "p90": 38.911, "p95": 41.02, "n": 60, "min": 22.114, "max": 43.35},
+      "output_tps": {"p50": 33.104, "p90": 38.42, "p95": 40.011, "n": 60, "min": 20.412, "max": 44.11}
+    },
+    "throughput": {"rpm": 12.93, "tpm": 8879.31, "input_tpm": 3879.31, "output_tpm": 5000.0},
+    "totals": {"prompt_tokens": 18000, "completion_tokens": 23200, "cached_tokens": 12000, "cache_write_tokens": 4200},
+    "finish": {"stop": 44, "length": 16, "tool_calls": 0, "empty": 0, "other": 0},
+    "raw": [
+      {"ok": true, "ttft": 2.884, "total": 7.012, "completion_tokens": 128, "prompt_tokens": 301, "cached_tokens": 0, "cache_write_tokens": 301, "finish": "stop"},
+      {"ok": true, "ttft": 3.402, "total": 7.884, "completion_tokens": 141, "prompt_tokens": 301, "cached_tokens": 296, "cache_write_tokens": 5, "finish": "length"},
+      {"ok": true, "ttft": 6.115, "total": 11.203, "completion_tokens": 152, "prompt_tokens": 301, "cached_tokens": 299, "cache_write_tokens": 2, "finish": "stop"}
+    ]
+  },
+  "cache": {
+    "scenarios": {
+      "A_identical_20k": {
+        "pass": true,
+        "hit_rate_pct": 99.6,
+        "rounds": [
+          {"i": 1, "cached_tokens": 0, "prompt_tokens": 20158, "hit_rate_pct": 0.0},
+          {"i": 2, "cached_tokens": 20037, "prompt_tokens": 20158, "hit_rate_pct": 99.4},
+          {"i": 3, "cached_tokens": 20080, "prompt_tokens": 20158, "hit_rate_pct": 99.6},
+          {"i": 4, "cached_tokens": 20060, "prompt_tokens": 20158, "hit_rate_pct": 99.5},
+          {"i": 5, "cached_tokens": 20100, "prompt_tokens": 20158, "hit_rate_pct": 99.7},
+          {"i": 6, "cached_tokens": 20080, "prompt_tokens": 20158, "hit_rate_pct": 99.6}
+        ]
+      },
+      "B_multiturn_12k": {
+        "pass": true,
+        "hit_rate_pct": 98.8,
+        "rounds": [
+          {"i": 1, "cached_tokens": 0, "prompt_tokens": 12040, "hit_rate_pct": 0.0},
+          {"i": 2, "cached_tokens": 11880, "prompt_tokens": 12040, "hit_rate_pct": 98.7},
+          {"i": 3, "cached_tokens": 11895, "prompt_tokens": 12040, "hit_rate_pct": 98.8}
+        ]
+      },
+      "C_short_1k": {
+        "pass": true,
+        "hit_rate_pct": 93.1,
+        "rounds": [
+          {"i": 1, "cached_tokens": 0, "prompt_tokens": 1042, "hit_rate_pct": 0.0},
+          {"i": 2, "cached_tokens": 968, "prompt_tokens": 1042, "hit_rate_pct": 92.9},
+          {"i": 3, "cached_tokens": 972, "prompt_tokens": 1042, "hit_rate_pct": 93.3}
+        ]
+      },
+      "E_cache_key": {
+        "pass": true,
+        "hit_rate_pct": 99.3,
+        "rounds": [
+          {"i": 1, "cached_tokens": 0, "prompt_tokens": 15020, "hit_rate_pct": 0.0},
+          {"i": 2, "cached_tokens": 14900, "prompt_tokens": 15020, "hit_rate_pct": 99.2},
+          {"i": 3, "cached_tokens": 14920, "prompt_tokens": 15020, "hit_rate_pct": 99.3}
+        ]
+      }
+    },
+    "ttl_5m": {"write_tokens": 20144, "header": "20144", "read_back_hit_pct": 98.9, "pass": true},
+    "ttl_1h": {
+      "write_tokens": 20080,
+      "header": "20080",
+      "read_back_after_s": 480,
+      "read_back_hit_pct": 97.2,
+      "read_back_58m": "未测",
+      "pass": true
+    }
+  },
+  "multimodal": {
+    "image_b64": {"ok": true, "status": 200, "detail": "描述与提示一致：red square"},
+    "video_b64_1mb": {"ok": true, "status": 200, "detail": "1MB 视频 base64 被接受，描述含 blue circle"},
+    "video_url": {"ok": true, "status": 200, "detail": "公网 URL 被接受"},
+    "video_100mb": {"status": "未测"}
+  },
+  "formula": {
+    "tools": {"status": 200, "ok": true, "detail": "3 个工具"},
+    "fibers": {"status": 200, "ok": true, "detail": "fiber 对象返回"},
+    "no_v1": {"status": 404, "ok": false, "detail": "无 /v1 前缀 → url.not_found，记为网关差异"}
+  },
+  "hidden_prompt": {
+    "fixed_overhead": 12,
+    "leak_rate": "1/6",
+    "identity": {"ok": true, "detail": "自述 Kimi / Moonshot"},
+    "extraction_attempt": {"tested": false, "leaked": false, "detail": "请求未成功"},
+    "probe_successes": 6,
+    "probe_total": 6,
+    "verdict": "无强注入迹象；复述探测未测"
+  },
+  "notes": [
+    "fixture 仅供渲染与自测，数字非真实渠道结果",
+    "100MB 视频与 58 分钟缓存回读未测"
+  ]
+}
