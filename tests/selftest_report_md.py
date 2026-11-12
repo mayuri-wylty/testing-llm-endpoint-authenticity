@@ -251,6 +251,33 @@ def check_evil():
     return fails
 
 
+def check_perf_overview():
+    """Reference-report parity (kimi-k31-pro-full-report.html): 概览卡 / 派生指标 / 口径说明 / 数据来源 must appear in the md."""
+    text, f = render(AUDIT_FIXTURE, os.path.join(OUT_DIR, "overview.md"))
+    if text is None:
+        return f
+    fails = []
+    for need, why in (
+        ("#### A.5.0 性能概览", "缺少概览小节"),
+        ("请求成功 60 / 60", "概览缺少请求成功 x / y"),
+        ("核心指标验收 5 / 5 项", "概览缺少核心指标验收"),
+        ("缓存命中（按 token 加权）", "全部指标缺少加权缓存命中"),
+        ("66.67%", "加权缓存命中应为 12000/18000=66.67%"),
+        ("截断（length）", "全部指标缺少截断统计"),
+        ("**成功口径：**", "缺少成功口径说明"),
+        ("**统计口径：**", "缺少统计口径说明"),
+        ("**估算说明：**", "缺少估算说明"),
+        ("数据来源：relay.example.com · kimi-k3.1-pro", "页脚数据来源缺少主机与模型"),
+    ):
+        if need not in text:
+            fails.append(why + "：" + need)
+    # degraded: no spec -> overview must not crash and must say 未提供/未测
+    t2, f2 = render(AUDIT_FIXTURE, os.path.join(OUT_DIR, "overview_nospec.md"), spec="")
+    if t2 is None:
+        fails += f2
+    return fails
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -268,6 +295,7 @@ def main():
         ("渲染/小数位/标题/分数/官方实测表", lambda: check_main(audit_doc, spec_doc),
          "fixtures + --profile kimi-k3.1-pro 渲染成功，无 >=3 位小数，15 标题与分数 96/89 齐全，含“官方 / 实测”表"),
         ("降级（无 spec / 无 profile / 皆无）", check_degraded, "三种降级均退出 0 且含“未测/未提供”"),
+        ("参考报告对齐（概览/口径/派生指标/来源）", check_perf_overview, "概览卡、加权缓存命中、截断统计、三条口径说明、页脚数据来源齐全"),
         ("evil 转义", check_evil, "无 <script/<img、无 sk- key，表格列数未被 | 破坏"),
         ("渠道评分算式一致", check_channel_score, "score 0..100 x performance 0..100 共 10201 组，展示的 2 位小数与取整结果一致"),
     ):

@@ -452,6 +452,33 @@ def check_nospec_lint():
     return fails
 
 
+def check_carbon_style():
+    """Reference-style parity (kimi-k31-pro-full-report.html, IBM Carbon): square cards, black masthead, thin big numbers."""
+    text = _read_text(REPORT_HTML)
+    css = text.split("</style>")[0]
+    fails = []
+    for need, why in (
+        ("--bg:#f4f4f4", "浅色背景应为 Carbon #f4f4f4"),
+        ("--accent:#0f62fe", "强调色应为 Carbon 蓝 #0f62fe"),
+        ("--radius:0", "卡片应为直角"),
+        ("--ok:#198038", "达标色应为 #198038"),
+        ("--bad:#da1e28", "失败色应为 #da1e28"),
+        (".masthead{background:#161616", "顶栏应为黑色 #161616"),
+        (".core-value{font-weight:300", "核心大数字应为细字重 300"),
+        (".total{background:#262626", "token 合计条应为深色 #262626"),
+        ("repeat(5,minmax(0,1fr))", "核心标准卡应在宽屏同排 5 列"),
+        (".core-grid{gap:1px", "核心卡应为 1px 网格线风格"),
+        (".profile", "缺少测试配置行样式 .profile"),
+    ):
+        if need not in css:
+            fails.append(why + "：" + need)
+    if 'class="profile"' not in text:
+        fails.append("HTML 缺少测试配置行 class=\"profile\"")
+    if re.search(r"border-radius:\s*(?:10|6)px", css.split("@media print")[0].split("/* ---- carbon")[-1]) and "/* ---- carbon" in css:
+        fails.append("carbon 层不应再出现 6/10px 圆角")
+    return fails
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -477,6 +504,14 @@ def main():
         return 1
     _say("PASS report_html 渲染：15 项标题齐全，含分数 96/89，无外链、无 <script、无 test-key")
     _say("  输出：%s" % REPORT_HTML)
+
+    fails = check_carbon_style()
+    if fails:
+        _say("FAIL report_html 参考风格：%d 项断言未通过" % len(fails))
+        for fail in fails:
+            _say("  - " + fail)
+        return 1
+    _say("PASS report_html 参考风格：Carbon 令牌、直角、黑顶栏、细字重、5 列核心卡、配置行齐全")
 
     fails = check_escaping()
     if fails:

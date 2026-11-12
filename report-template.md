@@ -177,6 +177,10 @@
 ### A.5 负载与缓存明细
 数据来源：`spec_audit.py` 的 `load` 与 `cache` 块（或 `load_test.py --out`）。
 
+- 性能概览（A.5.0，脚本生成）：请求成功 x / y、核心指标验收 n / 5 项、测试配置（主机、模型、协议、档位）。
+- 派生指标：缓存命中按 token 加权（cached ÷ prompt）、截断（length）与空正文（empty）次数。
+- 口径说明（脚本生成，参考 kimi-k31-pro-full-report.html）：成功口径、统计口径、估算说明三条；页脚写明主机 · 模型 · 基准存档日期。
+
 - 样本：<samples> 次，成功 <success> 次（<success_rate>%）；p95 在 60 样本下置信度低，报告须注明。
 - 分位数（实测 vs 官方存档）：
 | 指标 | p50 | p90 | p95 | 官方 p50 | 官方 p90 | 官方 p95 | 判定 |

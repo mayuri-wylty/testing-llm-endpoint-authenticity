@@ -49,6 +49,16 @@ def build_css():
     return CSS + (getattr(html_sec_core, "CSS_EXTRA", "") or "") + (getattr(html_sec_spec, "CSS_EXTRA", "") or "")
 
 
+def render_profile_row(audit, spec_doc):
+    """Single-line test configuration strip under the hero (reference report's 接口 / 并发 / ... row)."""
+    load = dig(spec_doc, "load") or {}
+    pairs = [("接口", dig(spec_doc, "host")), ("测试时间", dig(spec_doc, "tested_at")),
+             ("样本数", load.get("samples") if isinstance(load, dict) else None),
+             ("成功", load.get("success") if isinstance(load, dict) else None)]
+    cells = "".join('<span>%s<b>%s</b></span>' % (esc_raw(k), esc_raw(v if v not in (None, "") else "未测")) for k, v in pairs)
+    return '<div class="profile">%s</div>' % cells
+
+
 def build_report(audit, spec_doc, title, profile=None):
     audit, spec_doc = normalize_audit(audit), normalize_spec(spec_doc)  # malformed input degrades to 未测, never raises
     title = SK_RE.sub("sk-***", str(title))  # --title is user text: mask sk- tokens like every other string
@@ -59,6 +69,7 @@ def build_report(audit, spec_doc, title, profile=None):
         render_nav(),
         '<main class="page" id="main">',
         render_hero(audit, spec_doc, title, profile),
+        render_profile_row(audit, spec_doc),
         render_core(spec_doc, profile),
         render_metrics(spec_doc, profile),
         render_baseline(spec_doc, profile),

@@ -757,6 +757,15 @@ def render_a5(audit, spec_doc, profile, rows):
     load = dig(spec_doc, "load", default={}) or {}
     pf = perf_flags(spec_doc)
 
+    # ---- A.5.0 overview (HTML hero cards)
+    out += ["#### A.5.0 性能概览", "",
+            "- 请求成功 %s / %s（成功率 %s）" % (N(load.get("success")), N(load.get("samples")),
+                                              N(load.get("success_rate"), "%") if is_num(load.get("success_rate")) else MISSING),
+            "- 核心指标验收 %s / 5 项" % N(pf),
+            "- 测试配置：主机 %s · 模型 %s · 协议 %s · 档位 %s" % (
+                T(dig(spec_doc, "host") or MISSING), T(dig(spec_doc, "model") or MISSING),
+                T(dig(spec_doc, "protocol") or MISSING), T(dig(spec_doc, "tier") or MISSING)), ""]
+
     # ---- A.5.1 core standards (HTML section 01)
     out += ["#### A.5.1 核心标准（%s / 5 项达标）" % N(pf), ""]
     crows = []
@@ -840,7 +849,16 @@ def render_a5(audit, spec_doc, profile, rows):
             "- finish 分布：stop %s / length %s / tool_calls %s / empty %s / other %s；出现 empty 即第 6 项失败" % (
                 N(fin.get("stop")), N(fin.get("length")), N(fin.get("tool_calls")), N(fin.get("empty")), N(fin.get("other"))),
             "- 样本：%s 次，成功 %s 次（成功率 %s）；p95 在 60 样本下置信度低。" % (
-                N(load.get("samples")), N(load.get("success")), N(sr, "%") if is_num(sr) else MISSING), ""]
+                N(load.get("samples")), N(load.get("success")), N(sr, "%") if is_num(sr) else MISSING)]
+    pt, ct = tot.get("prompt_tokens"), tot.get("cached_tokens")
+    weighted = N(100.0 * float(ct) / float(pt), "%") if is_num(pt) and is_num(ct) and float(pt) > 0 else MISSING
+    out += ["- 缓存命中（按 token 加权）：%s（cached ÷ prompt，已报告 token 加权）" % weighted,
+            "- 截断（length）：%s 次；空正文（empty）：%s 次" % (N(fin.get("length")), N(fin.get("empty"))), "",
+            "**成功口径：** 主指标为请求成功率，%s / %s 次返回 HTTP 2xx（%s）；截断 %s 次、空正文 %s 次单独列出，不计入失败。" % (
+                N(load.get("success")), N(load.get("samples")), N(sr, "%") if is_num(sr) else MISSING,
+                N(fin.get("length")), N(fin.get("empty"))),
+            "**统计口径：** 缓存命中按已报告 token 加权；TPM 含输入与输出；分位数基于成功样本，全部请求保留在成功率分母。",
+            "**估算说明：** TPOT 与输出速度由客户端首末正文时间及 usage 估算，非服务端逐 token 计时；接收窗口过短（集中到达）会扭曲两者。", ""]
 
     out += render_a53(spec_doc, profile, rows)
     out += render_a54(spec_doc, items)
@@ -938,11 +956,12 @@ def render_a55(spec_doc):
     return out
 
 
-def render_footer(profile):
+def render_footer(profile, spec_doc=None):
     date = benchmark.baseline_source(profile)
+    host, model = dig(spec_doc, "host") or MISSING, dig(spec_doc, "model") or MISSING
     return ["---", "",
-            "数据来源：实测 JSON · 基准：官方存档 %s · 由 `report_md.py` 确定性生成，结论与 HTML 报告一致。" %
-            (T(date) if date else NOT_GIVEN), ""]
+            "数据来源：%s · %s · 本地客户端实测 · 基准：官方存档 %s · 由 `report_md.py` 确定性生成，结论与 HTML 报告一致。" %
+            (T(host), T(model), T(date) if date else NOT_GIVEN), ""]
 
 
 # --------------------------------------------------------------------------- assembly
@@ -965,7 +984,7 @@ def build_report(audit, spec_doc, profile, title):
     parts += render_a3(spec_doc)
     parts += render_a4(spec_doc)
     parts += render_a5(audit, spec_doc, profile, rows)
-    parts += render_footer(profile)
+    parts += render_footer(profile, spec_doc)
     text = "\n".join(parts)
     return re.sub(r"\n{3,}", "\n\n", text).rstrip("\n") + "\n"
 
