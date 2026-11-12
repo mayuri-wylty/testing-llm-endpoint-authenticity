@@ -1,4 +1,4 @@
-"""Sections 04-06 (spec conformance, billing and cache, authenticity audit) and totals.
+"""Sections 02, 05, 06 (spec conformance, billing and cache, script-score audit) and totals.
 
 Conventions (see html_components.py): numbers go through ``fmt`` (float -> 2 decimals), free text from JSON goes
 through ``txt`` (round + gloss + escape), fixed labels go through ``lab``/``bi`` (``English（中文）``), tables go
@@ -32,7 +32,6 @@ from html_components import (
     txt,
     lab,
     ov,
-    bar_pair,
 )
 from i18n_zh import bi, zh
 
@@ -88,12 +87,12 @@ def evidence_html(ev):
 def render_spec_items(spec_doc, profile=None):
     items = items_of(spec_doc)
     if not items:
-        return section("04", "规范符合度", NO_SPEC_TEXT) + \
+        return section("02", "规范符合度", NO_SPEC_TEXT) + \
             empty_panel(NO_SPEC_TEXT, "15 项规范清单不可用。")
 
     counts = {s: sum(1 for it in items if it.get("status") == s) for s in STATUS_TEXT}
     score = dig(spec_doc, "spec", "score")
-    out = [section("04", "规范符合度",
+    out = [section("02", "规范符合度",
                    f"{counts['pass']} 通过 · {counts['partial']} 部分 · "
                    f"{counts['fail']} 未通过 · {counts['skip']} 跳过")]
     marks = {"pass": "✓", "partial": "!", "fail": "✕", "skip": "–"}
@@ -194,13 +193,6 @@ def _cache_rows(spec_doc, profile):
             if r.get("group") == "cache" and r.get("metric") in _SCENARIO_ROW}
 
 
-def _threshold_html(row):
-    thr = row.get("threshold") if row else None
-    if is_num(thr) and row.get("threshold_kind") == "pct_min":
-        return f"≥ {val_html(thr, '%')}"
-    return '<span class="na">未提供</span>'
-
-
 def render_billing(spec_doc, profile=None):
     out = [fold_start("05", "计费与缓存", f"{bi('usage')}字段 · 5m / 1h 写入 · 缓存场景")]
     if spec_doc is None:
@@ -287,11 +279,10 @@ def render_billing(spec_doc, profile=None):
             measured = row["measured"] if row and row.get("measured") is not None else (hit if is_num(hit) else None)
             official = row.get("official") if row else None
             if official is not None:
-                cell = ov(official, measured, "%", row.get("delta_pct"), row.get("verdict")) + \
-                    " " + bar_pair(official, measured, "缓存命中率")
+                cell = ov(official, measured, "%")
             else:
                 cell = ov(None, measured, "%")
-            rows.append([_scenario_label(name), _pill(st), cell, _threshold_html(row), fmt(len(rounds))])
+            rows.append([_scenario_label(name), cell, fmt(len(rounds))])
             rrows = [
                 [fmt(r.get("i")), fmt(r.get("cached_tokens")), fmt(r.get("prompt_tokens")),
                  val_html(r.get("hit_rate_pct"), "%") if is_num(r.get("hit_rate_pct")) else "未测"]
@@ -305,8 +296,8 @@ def render_billing(spec_doc, profile=None):
                     + "</details>"
                 )
         out.append('<div class="bl-subhead">缓存场景<span>固定前缀重复请求 · 官方 / 实测命中率</span></div>')
-        out.append(table(["场景", "判定", "官方 / 实测", "门槛", "轮次"], rows,
-                         aligns=["", "c", "", "r", "r"], caption="缓存场景命中率"))
+        out.append(table(["场景", "官方 / 实测", "轮次"], rows,
+                         aligns=["", "", "r"], caption="缓存场景命中率"))
         out.extend(details_blocks)
     else:
         out.append('<div class="bl-subhead">缓存场景</div>')
@@ -335,7 +326,7 @@ _VERDICT_MARK = {"green": "✓", "amber": "!", "red": "✕", "": "–"}
 
 
 def render_audit(audit):
-    out = [section("06", "真实性与渠道", f"{bi('model_audit')} 加权检查 · 独立于规范符合度")]
+    out = [section("06", "脚本得分与渠道", f"{bi('model_audit')} 加权检查 · 独立于规范符合度")]
     score = audit.get("score")
     verdict = audit.get("verdict") or "未测"
     hard_fail = audit.get("hard_fail")
@@ -360,7 +351,7 @@ def render_audit(audit):
     ]
     verdict_html = _gl(verdict) if isinstance(verdict, str) else _t(verdict)
     out.append(
-        f'<div class="au-banner {vcls}" role="group" aria-label="真实性审计结论">'
+        f'<div class="au-banner {vcls}" role="group" aria-label="脚本得分审计结论">'
         f'<div class="au-head"><div class="au-score">{fmt(score) if is_num(score) else "未测"}'
         f'<small>/ 100</small></div>'
         f'<div class="au-verdict"><span aria-hidden="true">{_VERDICT_MARK.get(vcls, "–")}</span> '
@@ -393,7 +384,7 @@ def render_audit(audit):
                         f'{esc_raw(round_text(_mask(c.get("note") or "未测")))}</pre>')
         out.append(table(["检查项", "权重", "得分", "加权得分"], rows,
                          cls="table check-table", aligns=["", "r", "r", "r"],
-                         caption="真实性检查明细"))
+                         caption="脚本得分检查明细"))
         out.append('<details class="au-raw"><summary>raw note（原始说明）· 逐项</summary>'
                    f'<div class="au-raws">{"".join(raws)}</div></details>')
     else:

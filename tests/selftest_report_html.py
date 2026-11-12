@@ -500,7 +500,7 @@ def check_hierarchy():
             fails.append("关键发现应带 #sec-0X 锚点链接")
         if body.find('class="findings"') > body.find('class="kpi-grid"'):
             fails.append("关键发现区应位于核心卡之前")
-    for sec in ("02", "03", "05"):
+    for sec in ("03", "04", "05"):
         if not re.search(r'<details class="fold" id="sec-%s"' % sec, body):
             fails.append("第 %s 节应为折叠块 <details class=\"fold\" id=\"sec-%s\"" % (sec, sec))
     if 'class="chips"' in body:
@@ -529,6 +529,61 @@ def check_hierarchy():
             fails.append("全部通过时仍应渲染关键发现区")
     else:
         fails.append("全绿渲染退出码 %s" % proc.returncode)
+    return fails
+
+
+SECTION_ORDER = (("01", "核心标准"), ("02", "规范符合度"), ("03", "全部指标"),
+                 ("04", "官方基准对标"), ("05", "计费与缓存"), ("06", "脚本得分与渠道"))
+
+
+def check_v3():
+    """v3: 规范符合度 follows 核心标准; 真实性分 -> 脚本得分; performance shows 官方 / 实测 only (no 门槛)."""
+    out = os.path.join(OUT_DIR, "report_v3.html")
+    proc = _run_cli(REPORT, AUDIT_FIXTURE, out, spec_path=SPEC_FIXTURE, extra=["--profile", PROFILE_ID])
+    if proc.returncode != 0:
+        return ["v3 渲染退出码 %s" % proc.returncode]
+    text = _read_text(out)
+    body = text.split("</style>", 1)[-1]
+    fails = []
+    # 1. order and numbering (anchors, headings and nav agree)
+    pos = []
+    for idx, title in SECTION_ORDER:
+        m = re.search(r'id="sec-%s"' % idx, body)
+        pos.append(m.start() if m else -1)
+        if not m:
+            fails.append("缺少章节 sec-%s" % idx)
+        elif not re.search(r'sec-%s".*?<h2>%s</h2>' % (idx, re.escape(title)), body[m.start():m.start() + 600], flags=re.S):
+            fails.append("sec-%s 标题应为“%s”" % (idx, title))
+        if not re.search(r'<a href="#sec-%s"><span class="n">%s</span>%s</a>' % (idx, idx, re.escape(title)), body):
+            fails.append("目录应含 %s %s" % (idx, title))
+    if all(p >= 0 for p in pos) and pos != sorted(pos):
+        fails.append("章节出现顺序应为 01→06，实际位置 %s" % pos)
+    if re.search(r'<details class="fold" id="sec-02"', body):
+        fails.append("02 规范符合度不应是折叠块")
+    # 2. label
+    for old in ("真实性分", "真实性与渠道", "真实性检查明细", "真实性审计结论", "真实性审计"):
+        if old in text:
+            fails.append("页面不应再含“%s”" % old)
+    if "脚本得分" not in text:
+        fails.append("页面应含“脚本得分”")
+    # 3. no thresholds / verdicts on performance
+    vis = _visible(text)
+    for old in ("门槛", "超限"):
+        if old in vis:
+            fails.append("可见文本不应含“%s”" % old)
+    for needle in ("kpi-target", "bm-gate", "barpair", "通过数"):
+        if needle in body:
+            fails.append("页面不应含 %s" % needle)
+    m = re.search(r'<section class="findings".*?</section>', body, flags=re.S)
+    if m and "超限" in m.group(0):
+        fails.append("关键发现不应含“超限”")
+    hdr = re.search(r'id="sec-04".*?<thead>(.*?)</thead>', body, flags=re.S)
+    if hdr:
+        cols = re.findall(r'<th[^>]*>(.*?)</th>', hdr.group(1))
+        if cols != ["指标", "分位", "官方 / 实测", "偏差"]:
+            fails.append("04 对标表列应为 指标/分位/官方 / 实测/偏差，实际 %s" % cols)
+    else:
+        fails.append("04 缺少对标表")
     return fails
 
 
@@ -573,6 +628,14 @@ def main():
             _say("  - " + fail)
         return 1
     _say("PASS report_html 信息层级：关键发现置顶、次要章节折叠、通过项合并、体积下降")
+
+    fails = check_v3()
+    if fails:
+        _say("FAIL report_html v3（章节顺序/脚本得分/无门槛）：%d 项断言未通过" % len(fails))
+        for fail in fails:
+            _say("  - " + fail)
+        return 1
+    _say("PASS report_html v3：规范符合度居 02、脚本得分命名、性能仅展示官方/实测")
 
     fails = check_escaping()
     if fails:

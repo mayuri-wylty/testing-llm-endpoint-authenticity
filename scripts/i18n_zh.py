@@ -219,7 +219,7 @@ _STATUS = {
     "fixed": "固定值",
     "spec": "规范",
     "audit": "审计",
-    "model_audit": "真实性审计",
+    "model_audit": "脚本审计",
     "spec_audit": "规范审计",
     "fixture": "测试夹具",
     "highly credible": "高度可信",

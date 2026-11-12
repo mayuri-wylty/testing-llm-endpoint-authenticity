@@ -1,4 +1,4 @@
-"""Sections 01-03: core standards, all metrics, official-baseline comparison.
+"""Sections 01, 03, 04: core standards, all metrics, official-baseline comparison.
 
 Every visible number goes through html_components.fmt / val_html / ov (float -> 2 decimals), every visible
 English word through lab()/bi() (``English（中文）``), free text through txt(). Official-vs-measured data comes
@@ -8,9 +8,6 @@ side is still shown.
 from benchmark import baseline_source, build_rows
 from html_components import (
     CORE_TEXT,
-    VERDICT_TEXT,
-    bar_pair,
-    delta_badge,
     dig,
     empty_panel,
     esc,
@@ -23,7 +20,6 @@ from html_components import (
     items_of,
     lab,
     ov,
-    perf_flags,
     pill,
     section,
     status_of,
@@ -66,7 +62,7 @@ CSS_EXTRA = r"""
 .kpi-meta dd{margin:0}
 .kpi .na,.bm-table .na{color:var(--muted)}
 
-/* ---- 02 all metrics ---- */
+/* ---- 03 all metrics ---- */
 .sc-quant td.r,.sc-quant th.r,.bm-table td.r,.bm-table th.r{text-align:right}
 .bm-table td.c,.bm-table th.c{text-align:center}
 .mt-name{display:block;font-weight:600}
@@ -99,7 +95,7 @@ CSS_EXTRA = r"""
   .fr-label{grid-column:1 / -1}
 }
 
-/* ---- 03 official baseline ---- */
+/* ---- 04 official baseline ---- */
 .bm-note{margin:0 0 .75rem;font-size:.875rem;line-height:1.7;color:var(--muted)}
 .bm-legend{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;align-items:center;margin:0 0 1rem;
   font-size:.875rem;color:var(--muted)}
@@ -148,12 +144,11 @@ def _status_pill(st, text=None):
 
 
 def _ov_row(row, measured=None):
-    """``官方 / 实测`` cell of a benchmark row (+ delta badge when both sides are known)."""
+    """``官方 / 实测`` cell of a benchmark row (numbers only)."""
     if not row:
         return ov(None, measured) if measured is not None else ""
-    delta = row.get("delta_pct")
     return ov(row.get("official"), row.get("measured") if row.get("measured") is not None else measured,
-              row.get("unit", ""), delta, row.get("verdict") if delta is not None else None)
+              row.get("unit", ""))
 
 
 def _pq(q):
@@ -183,31 +178,28 @@ def render_findings(audit, spec_doc, profile=None):
         cands.append((1, "fail", "✕ 用量虚高", lab("usage_inflated"), "06"))
     items = items_of(spec_doc)
     for it in items:
+        if it.get("id") in (1, 2, 3) or it.get("key") in ("perf_baseline", "ttft", "cache_hit"):
+            continue  # perf items: shown as numbers only, no pass/fail
         st = it.get("status")
         if st in ("fail", "partial"):
             note = it.get("note") or ""
             title = it.get("title") or it.get("key") or "未命名项"
             body = txt(_clip(title, 40)) + (f" — {txt(_clip(note, 36))}" if note and st == "fail" else "")
-            cands.append((1 if st == "fail" else 3, st, "✕ 未通过" if st == "fail" else "! 部分通过", body, "04"))
-    for r in _safe_rows(spec_doc, profile):
-        if r.get("verdict") == "bad":
-            name = _metric_label(r) + (f" {_pq(r['pctl'])}" if r.get("pctl") else "")
-            cands.append((2, "fail", "✕ 超限",
-                          f"{name}：" + ov(r.get("official"), r.get("measured"), r.get("unit", "")), "03"))
+            cands.append((1 if st == "fail" else 3, st, "✕ 未通过" if st == "fail" else "! 部分通过", body, "02"))
     load = dig(spec_doc, "load", default={}) or {}
     sr = load.get("success_rate")
     if is_num(sr) and float(sr) < 100.0:
-        cands.append((2, "fail", "✕ 请求失败", f"请求成功率 {val_html(sr, '%')}", "02"))
+        cands.append((2, "fail", "✕ 请求失败", f"请求成功率 {val_html(sr, '%')}", "03"))
     empty = dig(load, "finish", "empty")
     if is_num(empty) and empty > 0:
-        cands.append((2, "fail", "✕ 空响应", f"出现 {fmt(empty)} 次空响应", "02"))
+        cands.append((2, "fail", "✕ 空响应", f"出现 {fmt(empty)} 次空响应", "03"))
     cands.sort(key=lambda c: c[0])
     rows = []
     for _, st, ptxt, body, anchor in cands[:3]:
         rows.append(f'<li><a href="#sec-{anchor}">{pill(st, ptxt)}<span>{body}</span></a></li>')
     rest = len(cands) - 3
     if rest > 0:
-        rows.append(f'<li class="more"><a href="#sec-04"><span>另有 {fmt(rest)} 项，见各章节</span></a></li>')
+        rows.append(f'<li class="more"><a href="#sec-02"><span>另有 {fmt(rest)} 项，见各章节</span></a></li>')
     if not cands:
         text = NO_SPEC if spec_doc is None else "未发现异常：规范、基准与请求成功率均无需处理"
         rows.append(f'<li class="ok"><span>{text}</span></li>')
@@ -238,17 +230,16 @@ def _ratio_key_metric(key):
 
 
 def core_card(cls, title, sub_html, value_html_str, status_html, ov_html, ov_label, mini, target_html, delta_html):
-    """Slim L2 card: title, big value, status, one comparison line, one target line.
-    ``sub_html`` / ``mini`` / ``delta_html`` are accepted for call-site stability but no longer rendered
-    (their facts live in sections 02-03)."""
+    """Slim L2 card: title, big value, optional status pill, one 官方 / 实测 line.
+    ``sub_html`` / ``mini`` / ``target_html`` / ``delta_html`` are accepted for call-site stability but not rendered."""
     ovline = f'<div class="kpi-ovline">官方 / 实测 {ov_html}</div>' if ov_html else ""
+    status = f'<div class="kpi-status">{status_html}</div>' if status_html else ""
     return f"""
 <article class="kpi {esc_raw(cls)}">
   <h3 class="kpi-title">{title}</h3>
   <div class="kpi-value">{value_html_str}</div>
-  <div class="kpi-status">{status_html}</div>
+  {status}
   {ovline}
-  <div class="kpi-target">目标 {target_html}</div>
 </article>"""
 
 
@@ -298,12 +289,12 @@ def render_core(spec_doc, profile=None):
                 ov_label = f"{lab(METRIC_NAME.get(metric, metric))} {_pq(main_q)}"
         st = status_of(item1.get("status"))
         cards.append(core_card(
-            st, "官方基准对标", f"实测 ÷ 官方 · 最差 {_pq(main_q)} 比率",
-            value, _status_pill(st), ov_html, ov_label, mini, target, delta_html))
+            "skip", "官方基准对标", f"实测 ÷ 官方 · 最差 {_pq(main_q)} 比率",
+            value, "", ov_html, ov_label, mini, target, delta_html))
     else:
         cards.append(core_card(
             "skip", "官方基准对标", f"实测 ÷ 官方 · {_pq('p50')} / {_pq('p90')} / {_pq('p95')}",
-            "未测", _status_pill("skip", "未测"), "", "",
+            "未测", "", "", "",
             f"<span>{_pq('p50')} <b>未测</b></span><span>{_pq('p90')} <b>未测</b></span>"
             f"<span>{_pq('p95')} <b>未测</b></span>", "未测", "未测"))
 
@@ -323,10 +314,10 @@ def render_core(spec_doc, profile=None):
         mini = f"<span>{_pq('p95')} <b>{val_html(p95, 's') if is_num(p95) else '未测'}</b></span>"
         row = idx.get(("ttft", "ttft_s", "p90"))
         cards.append(core_card(
-            st, ttft_title, ttft_sub, value, _status_pill(st), _ov_row(row, p90 if is_num(p90) else None),
+            "skip", ttft_title, ttft_sub, value, "", _ov_row(row, p90 if is_num(p90) else None),
             f"{lab('TTFT')} {_pq('p90')}", mini, target, delta_html))
     else:
-        cards.append(core_card("skip", ttft_title, ttft_sub, "未测", _status_pill("skip", "未测"), "", "",
+        cards.append(core_card("skip", ttft_title, ttft_sub, "未测", "", "", "",
                                f"<span>{_pq('p95')} <b>未测</b></span>", "未测", "未测"))
 
     # 03 cache hit
@@ -345,10 +336,10 @@ def render_core(spec_doc, profile=None):
         row = idx.get(("cache", CACHE_KEY.get(low[0]), None)) if low[0] else None
         ov_html = _ov_row(row, low[1]) if (row or low[1] is not None) else ""
         ov_label = lab(low[0]) if low[0] else ""
-        cards.append(core_card(st, "缓存命中", cache_sub, value, _status_pill(st), ov_html, ov_label,
+        cards.append(core_card("skip", "缓存命中", cache_sub, value, "", ov_html, ov_label,
                                mini, target, delta_html))
     else:
-        cards.append(core_card("skip", "缓存命中", cache_sub, "未测", _status_pill("skip", "未测"), "", "",
+        cards.append(core_card("skip", "缓存命中", cache_sub, "未测", "", "", "",
                                "未测", "未测", "未测"))
 
     # 04 request success rate
@@ -378,11 +369,11 @@ def render_core(spec_doc, profile=None):
         mini += f"<span>{_pq('p95')} <b>{val_html(node.get('p95'), 'ms')}</b></span>"
     row = idx.get(("perf", "tpot_ms", "p90"))
     cards.append(core_card("skip", f"{lab('TPOT')} {_pq('p90')}", lab("time per output token"), value,
-                           _status_pill("skip", "仅展示（无阈值）"),
+                           "",
                            _ov_row(row, p90 if is_num(p90) else None) if (row or is_num(p90)) else "",
-                           f"{lab('TPOT')} {_pq('p90')}", mini, "未提供阈值", "未测"))
+                           f"{lab('TPOT')} {_pq('p90')}", mini, "", ""))
 
-    note = NO_SPEC if spec_doc is None else f"核心验收卡 · {fmt(perf_flags(spec_doc))} / 5 项达标"
+    note = NO_SPEC if spec_doc is None else "核心指标 · 5 项"
     return section("01", "核心标准", note) + '<section class="kpi-grid">' + "".join(cards) + "</section>"
 
 
@@ -404,7 +395,7 @@ def render_metrics(spec_doc, profile=None):
     from html_sec_spec import render_totals  # local import: spec module is a sibling, no cycle at load time
     load = dig(spec_doc, "load", default={}) or {}
     note = NO_SPEC if spec_doc is None else _metrics_summary(load)
-    out = [fold_start("02", "全部指标", note)]
+    out = [fold_start("03", "全部指标", note)]
     if not load:
         out.append(empty_panel(NO_SPEC, "负载分位数与吞吐指标无法展示。"))
         out.append(FOLD_END)
@@ -470,46 +461,29 @@ def render_metrics(spec_doc, profile=None):
 # --------------------------------------------------------------------------- section 03
 
 GROUPS = (
-    ("perf", "性能分位（规范第 1 项）"),
-    ("ttft", f"{bi('TTFT')} 绝对门槛（规范第 2 项）"),
-    ("cache", "缓存命中率（规范第 3 项）"),
+    ("perf", "性能分位"),
+    ("ttft", f"{bi('TTFT')} 首字延迟"),
+    ("cache", "缓存命中率"),
 )
-
-
-def _threshold_html(row):
-    thr, kind, unit = row.get("threshold"), row.get("threshold_kind"), row.get("unit", "")
-    if not is_num(thr) or not kind:
-        return '<span class="na">无门槛</span>'
-    t = fmt(thr)
-    if kind == "ratio_max":
-        return f"比率 ≤ {t}×"
-    if kind == "ratio_min":
-        return f"比率 ≥ {t}×"
-    if kind == "abs_max":
-        return f"≤ {t} {esc_raw(unit)}"
-    if kind == "pct_min":
-        return f"≥ {t}{esc_raw(unit)}"
-    return '<span class="na">无门槛</span>'
-
-
-def _verdict_pill(row, has_profile):
-    v = row.get("verdict")
-    if v == "ok":
-        return pill("pass", f"✓ {VERDICT_TEXT['ok']}")
-    if v == "bad":
-        return pill("fail", "✕ 超限")
-    if v == "warn":
-        return pill("partial", f"! {VERDICT_TEXT['warn']}")
-    return pill("skip", "– 无门槛" if (has_profile and row.get("threshold") is None) else "– 未评")
 
 
 def _direction_html(row):
     return "↓ 越低越好" if row.get("direction") == "lower" else "↑ 越高越好"
 
 
-def _bm_groups(rows, has_profile):
-    headers = ["指标", "分位", "官方 / 实测", "偏差", "门槛", "判定"]
-    aligns = ["", "", "r", "", "", "c"]
+def _delta_plain(delta_pct):
+    """Signed deviation as plain numbers: ▲ +24.80% / ▼ -3.10% / ■ 0.00% / — (missing)."""
+    if not is_num(delta_pct):
+        return '<span class="na">—</span>'
+    d = float(delta_pct)
+    arrow = "▲" if d > 0 else ("▼" if d < 0 else "■")
+    sign = "+" if d > 0 else ""
+    return f'<span class="dlt">{arrow} {sign}{fmt_num(d)}%</span>'
+
+
+def _bm_groups(rows):
+    headers = ["指标", "分位", "官方 / 实测", "偏差"]
+    aligns = ["", "", "r", ""]
     out = []
     for gkey, gtitle in GROUPS:
         grows = [r for r in rows if r.get("group") == gkey]
@@ -523,9 +497,7 @@ def _bm_groups(rows, has_profile):
                 f'<span class="bm-metric">{name}<span class="bm-dir">{esc_raw(_direction_html(r))}</span></span>',
                 _pq(pctl) if pctl else '<span class="na">—</span>',
                 ov(r.get("official"), r.get("measured"), r.get("unit", "")),
-                delta_badge(r.get("delta_pct"), r.get("verdict", "unknown")),
-                f'<span class="bm-gate">{_threshold_html(r)}</span>',
-                _verdict_pill(r, has_profile),
+                _delta_plain(r.get("delta_pct")),
             ])
         out.append(f'<div class="bm-group">{table(headers, body, cls="table bm-table", aligns=aligns, caption=gtitle)}</div>')
     return "".join(out)
@@ -536,31 +508,25 @@ def render_baseline(spec_doc, profile=None):
     has_profile = isinstance(profile, dict)
     item1 = find_item(items_of(spec_doc), ident=1, key="perf_baseline")
     if spec_doc is None:
-        return (fold_start("03", "官方基准对标", NO_SPEC, open_=True)
+        return (fold_start("04", "官方基准对标", NO_SPEC, open_=True)
                 + empty_panel(NO_SPEC, "缺少规范审计结果，无法展示官方基准对标。") + FOLD_END)
 
     rows = [r for r in _safe_rows(spec_doc, profile)
             if r.get("official") is not None or r.get("measured") is not None]
     if not rows:
-        return (fold_start("03", "官方基准对标", "无可对标数据", open_=True)
+        return (fold_start("04", "官方基准对标", "无可对标数据", open_=True)
                 + empty_panel("无可对标数据", f"{bi('spec')} {bi('JSON')} 中没有负载分位数或缓存命中率，且未提供官方画像。")
                 + FOLD_END)
 
-    bad = [r for r in rows if r.get("verdict") == "bad"]
-    judged = [r for r in rows if r.get("verdict") in ("ok", "bad", "warn")]
     if not has_profile:
         note = "官方基准未提供，仅展示实测"
     else:
-        note = f"{fmt(len(bad))} 项超限 / {fmt(len(judged))} 项判定" + (f" · 基准存档 {date}" if date else "")
-    out = [fold_start("03", "官方基准对标", note, open_=bool(bad))]
+        note = f"{fmt(len(rows))} 项对标" + (f" · 基准存档 {date}" if date else "")
+    out = [fold_start("04", "官方基准对标", note, open_=False)]
     out.append('<p class="bm-note">偏差 = （实测 − 官方）÷ 官方；延迟类越低越好，吞吐与缓存类越高越好。'
                + ("" if has_profile else f" 未指定 {bi('profile')} 官方画像文件，官方列显示「未提供」。")
                + "</p>")
-    if bad:
-        out.append('<div class="sc-subhead">需要关注的偏离项</div>')
-        out.append(_bm_groups(bad, has_profile))
-    out.append(f'<details class="bl-rounds"><summary>全部对标明细 · {fmt(len(rows))} 项</summary>'
-               f'{_bm_groups(rows, has_profile)}</details>')
+    out.append(_bm_groups(rows))
 
     evidence = dig(item1, "evidence", default=[]) or []
     note_txt = dig(item1, "note", default="")
