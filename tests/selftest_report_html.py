@@ -587,6 +587,69 @@ def check_v3():
     return fails
 
 
+FINAL_DOC = {
+    "channel_score": 73,
+    "models": [{"model": "kimi-k3.1-pro", "verdict": "假", "note": "分词器落在 GLM 区间"}],
+    "channel": {"verdict": "真", "type": "new-api 中转"},
+    "notes": ["分词器与 Kimi 不符", "疑似注入隐藏身份提示 <script>alert(1)</script> sk-ABCDEF1234567890XYZ"],
+    "summary": "该渠道所提供的模型很可能并非其所声称的模型，不建议使用。",
+}
+
+
+def check_final():
+    """--final: the agent's final conclusion outranks the script verdict in the hero; absent -> no banner."""
+    sys.path.insert(0, SCRIPTS)
+    import warnings
+    warnings.simplefilter("ignore")
+    import i18n_zh
+    fpath = os.path.join(OUT_DIR, "final.json")
+    with open(fpath, "w", encoding="utf-8") as f:
+        json.dump(FINAL_DOC, f, ensure_ascii=False)
+    out = os.path.join(OUT_DIR, "report_final.html")
+    proc = _run_cli(REPORT, AUDIT_FIXTURE, out, spec_path=SPEC_FIXTURE, extra=["--profile", PROFILE_ID, "--final", fpath])
+    if proc.returncode != 0:
+        return ["--final 渲染退出码 %s: %s" % (proc.returncode, _tail(proc.stderr or ""))]
+    text = _read_text(out)
+    body = text.split("</style>", 1)[-1]
+    fails = []
+    m = re.search(r'<section class="final-conclusion".*?</section>', body, flags=re.S)
+    if not m:
+        return ["缺少 final-conclusion 区块"]
+    blk = m.group(0)
+    if body.find('class="final-conclusion"') > body.find('class="stats"'):
+        fails.append("最终结论应位于三张统计卡之前")
+    if "最终结论" not in blk:
+        fails.append("区块应含“最终结论”")
+    for need in ("渠道评分", "73", "kimi-k3.1-pro", "假", "new-api 中转", "分词器与 Kimi 不符", "不建议使用"):
+        if need not in blk:
+            fails.append("最终结论区块应含“%s”" % need)
+    hero = re.search(r'<div class="verdict-line">.*?</div>', body, flags=re.S).group(0)
+    if "mostly credible" in hero or "脚本" in hero:
+        fails.append("首屏结论徽标不应沿用脚本判定")
+    if "最终" not in hero or 'vbadge red' not in hero:
+        fails.append("首屏结论徽标应为最终结论且为红色（模型为假）")
+    if "<script>alert" in text or "sk-ABCDEF1234567890XYZ" in text:
+        fails.append("最终结论未转义或泄漏 sk- key")
+    if "&lt;script&gt;" not in text:
+        fails.append("最终结论中的 <script> 应被转义")
+    if "脚本得分" not in body:
+        fails.append("脚本得分卡片仍应保留")
+    clean = dict(FINAL_DOC, notes=["分词器与 Kimi 不符"])
+    cpath = os.path.join(OUT_DIR, "final_clean.json")
+    with open(cpath, "w", encoding="utf-8") as f:
+        json.dump(clean, f, ensure_ascii=False)
+    cout = os.path.join(OUT_DIR, "report_final_clean.html")
+    proc = _run_cli(REPORT, AUDIT_FIXTURE, cout, spec_path=SPEC_FIXTURE, extra=["--profile", PROFILE_ID, "--final", cpath])
+    miss = i18n_zh.lint_html(_read_text(cout)) if proc.returncode == 0 else ["渲染失败"]
+    if miss:
+        fails.append("--final 整页 lint 非空：%s" % miss[:12])
+    plain = os.path.join(OUT_DIR, "report_nofinal.html")
+    proc = _run_cli(REPORT, AUDIT_FIXTURE, plain, spec_path=SPEC_FIXTURE, extra=["--profile", PROFILE_ID])
+    if proc.returncode != 0 or "final-conclusion" in _read_text(plain).split("</style>", 1)[-1]:
+        fails.append("无 --final 时不应出现 final-conclusion")
+    return fails
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -636,6 +699,14 @@ def main():
             _say("  - " + fail)
         return 1
     _say("PASS report_html v3：规范符合度居 02、脚本得分命名、性能仅展示官方/实测")
+
+    fails = check_final()
+    if fails:
+        _say("FAIL report_html --final（最终结论优先）：%d 项断言未通过" % len(fails))
+        for fail in fails:
+            _say("  - " + fail)
+        return 1
+    _say("PASS report_html --final：最终结论置于首屏、覆盖脚本判定、已转义")
 
     fails = check_escaping()
     if fails:

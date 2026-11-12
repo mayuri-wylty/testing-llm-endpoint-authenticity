@@ -63,7 +63,7 @@ def render_profile_row(audit, spec_doc):
     return '<div class="profile">%s</div>' % cells
 
 
-def build_report(audit, spec_doc, title, profile=None):
+def build_report(audit, spec_doc, title, profile=None, final=None):
     audit, spec_doc = normalize_audit(audit), normalize_spec(spec_doc)  # malformed input degrades to 未测, never raises
     title = SK_RE.sub("sk-***", str(title))  # --title is user text: mask sk- tokens like every other string
     body = [
@@ -72,7 +72,7 @@ def build_report(audit, spec_doc, title, profile=None):
         '<div class="layout">',
         render_nav(),
         '<main class="page" id="main">',
-        render_hero(audit, spec_doc, title, profile),
+        render_hero(audit, spec_doc, title, profile, final),
         render_profile_row(audit, spec_doc),
         render_findings(audit, spec_doc, profile),
         render_core(spec_doc, profile),
@@ -103,6 +103,8 @@ def main():
     p.add_argument("--audit", required=True, help="model_audit v2 JSON output")
     p.add_argument("--spec", default="", help="spec_audit JSON output (optional)")
     p.add_argument("--profile", default="", help="profile id or path (official baseline values; optional)")
+    p.add_argument("--final", default="", help="final conclusion JSON written by the agent (channel_score, models, "
+                   "channel, notes, summary); shown first in the hero and outranks the script verdict")
     p.add_argument("--out", required=True, help="output HTML path")
     p.add_argument("--title", default="模型渠道真实性报告", help="report title")
     args = p.parse_args()
@@ -121,8 +123,15 @@ def main():
         except (OSError, ValueError) as e:
             sys.exit(f"error: cannot read spec JSON {args.spec}: {e}")
 
+    final = None
+    if args.final:
+        try:
+            final = load_json(args.final, key)
+        except (OSError, ValueError) as e:
+            sys.exit(f"error: cannot read final JSON {args.final}: {e}")
+
     profile = load_profile(args.profile) if args.profile else None
-    doc = build_report(audit, spec_doc, args.title, profile)
+    doc = build_report(audit, spec_doc, args.title, profile, final)
     out_path = os.path.abspath(args.out)
     parent = os.path.dirname(out_path)
     if parent:

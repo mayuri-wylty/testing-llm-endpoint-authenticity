@@ -113,6 +113,18 @@ body:has(.theme-toggle:focus-visible) .theme-label{outline:3px solid var(--accen
 .chip{background:var(--surface-2);border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px;
   padding:3px 12px;line-height:1.5;overflow-wrap:anywhere}
 .chip b{color:var(--text);font-weight:600;margin-left:6px}
+.final-conclusion{margin-top:var(--space-3);border-left:4px solid var(--accent);background:var(--surface);
+  padding:var(--space-3) var(--space-4);display:grid;gap:var(--space-2)}
+.fc-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-2)}
+.fc-head>b{font-size:16px;font-weight:600}
+.fc-score{font-size:14px;color:var(--muted)}
+.fc-score b{font-size:32px;font-weight:300;color:var(--text);margin:0 4px}
+.fc-rows{margin:0;display:grid;gap:4px}
+.fc-rows div{display:flex;gap:var(--space-3);flex-wrap:wrap}
+.fc-rows dt{color:var(--muted);min-width:5em}
+.fc-rows dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.fc-notes{margin:0;padding-left:1.4em;font-size:14px;overflow-wrap:anywhere}
+.fc-summary{margin:0;font-size:14px;font-weight:600;overflow-wrap:anywhere}
 .stats{display:grid;grid-template-columns:1fr;gap:var(--space-3)}
 .stat{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:var(--radius);
   box-shadow:var(--shadow);padding:var(--space-3) var(--space-4);display:grid;grid-template-columns:minmax(0,1fr) auto;
@@ -605,7 +617,43 @@ def _stat(label, value_html, caption, cls=""):
     )
 
 
-def render_hero(audit, spec_doc, title, profile=None):
+def _s(v):
+    return esc_raw("" if v is None else str(v).strip())
+
+
+def _final_parts(final):
+    """Normalise the agent-written conclusion (never raises): (badge_cls, badge_text, section_html)."""
+    if not isinstance(final, dict):
+        return None
+    models = [m for m in (final.get("models") or []) if isinstance(m, dict)] if isinstance(final.get("models"), list) else []
+    ch = final.get("channel") if isinstance(final.get("channel"), dict) else {}
+    notes = [n for n in final.get("notes") if isinstance(n, str) and n.strip()][:4] if isinstance(final.get("notes"), list) else []
+    summary = final.get("summary") if isinstance(final.get("summary"), str) else ""
+    score = final.get("channel_score")
+    m_bad = any(str(m.get("verdict", "")).strip() == "假" for m in models)
+    c_bad = str(ch.get("verdict", "")).strip() == "假"
+    m_txt = "假" if m_bad else ("真" if models else "未判定")
+    c_txt = str(ch.get("verdict", "")).strip() or "未判定"
+    cls = "red" if (m_bad or c_bad) else ("green" if models or ch else "")
+    badge = f"最终结论：模型 {esc_raw(m_txt)} · 渠道 {esc_raw(c_txt)}"
+    head = (f'<div class="fc-head"><b>最终结论</b><span class="fc-score">渠道评分'
+            + (f'<b>{fmt(score)}</b>/ 100' if is_num(score) else '<b>未测</b>') + "</span></div>")
+    rows = ""
+    if models:
+        rows += "<div><dt>模型真伪</dt><dd>" + "；".join(
+            f"{_s(m.get('model'))}：{_s(m.get('verdict'))}" + (f"（{_s(m.get('note'))}）" if m.get("note") else "")
+            for m in models) + "</dd></div>"
+    if ch:
+        rows += (f"<div><dt>渠道真伪</dt><dd>{_s(ch.get('verdict'))}"
+                 + (f"（{_s(ch.get('type'))}）" if ch.get("type") else "") + "</dd></div>")
+    nl = ('<ol class="fc-notes">' + "".join(f"<li>{_s(n)}</li>" for n in notes) + "</ol>") if notes else ""
+    sm = f'<p class="fc-summary">总评：{_s(summary)}</p>' if summary.strip() else ""
+    dl = ('<dl class="fc-rows">' + rows + "</dl>") if rows else ""
+    sec = f'<section class="final-conclusion" aria-label="最终结论">{head}{dl}{nl}{sm}</section>'
+    return cls, badge, sec
+
+
+def render_hero(audit, spec_doc, title, profile=None, final=None):
     model = dig(spec_doc, "model") or dig(audit, "model") or "未测"
     host = dig(spec_doc, "host") or "未测"
     tested_at = dig(spec_doc, "tested_at") or "未测"
@@ -641,11 +689,20 @@ def render_hero(audit, spec_doc, title, profile=None):
     auth_value = (f'{fmt(score)}<small>/ 100</small>' if is_num(score) else "未测")
     auth_cap = (f'{lab(verdict)} · {lab("model_audit")} v{esc(dig(audit, "scoring_version") or "2")}')
 
+    fp = _final_parts(final)
+    if fp:
+        vbadge = f'<span class="vbadge {fp[0]}">{fp[1]}</span>'
+        final_html = fp[2]
+    else:
+        vbadge = f'<span class="vbadge {vcls}">结论：{lab(verdict)}</span>'
+        final_html = ""
+
     return f"""
 <section class="hero" id="top" aria-labelledby="report-title">
   <div class="hero-card">
     <h1 id="report-title">{esc_raw(title)}</h1>
-    <div class="verdict-line"><span class="vbadge {vcls}">结论：{lab(verdict)}</span></div>
+    <div class="verdict-line">{vbadge}</div>
+    {final_html}
     <div class="model-line">
       <span class="model">{esc_raw(model)}</span><span class="divider"></span>
       <span>{esc_raw(host)}</span><span class="divider"></span>
