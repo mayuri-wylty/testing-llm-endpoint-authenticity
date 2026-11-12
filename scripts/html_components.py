@@ -148,6 +148,18 @@ def section(index, title, note=""):
     )
 
 
+def fold_start(index, title, note="", open_=False):
+    """Collapsible section: the summary doubles as the section heading (anchor ``#sec-NN`` is the <details>)."""
+    return (
+        f'<details class="fold" id="sec-{esc_raw(index)}"{" open" if open_ else ""}>'
+        f'<summary><span class="section-index">{esc_raw(index)}</span><h2>{esc_raw(title)}</h2>'
+        f'<span class="section-note">{esc_raw(note)}</span></summary><div class="fold-body">'
+    )
+
+
+FOLD_END = "</div></details>"
+
+
 def table(headers, rows, cls="table", aligns=None, caption=None):
     """Responsive table: horizontally scrollable wrapper, ``scope="col"`` headers, optional caption.
     Header strings are escaped here; ``rows`` cells are raw HTML (callers pre-escape)."""

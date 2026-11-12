@@ -25,6 +25,8 @@ from html_components import (
     pill,
     verdict_class,
     empty_panel,
+    fold_start,
+    FOLD_END,
     section,
     table,
     txt,
@@ -96,25 +98,26 @@ def render_spec_items(spec_doc, profile=None):
                    f"{counts['fail']} 未通过 · {counts['skip']} 跳过")]
     marks = {"pass": "✓", "partial": "!", "fail": "✕", "skip": "–"}
     cells = "".join(
-        f'<div class="sp-count {st}"><span class="sp-count-label"><span aria-hidden="true">{marks[st]}</span> '
-        f'{lab(st)}</span><b class="sp-count-num">{fmt(counts[st])}</b></div>'
+        f'<span class="sp-count {st}"><span aria-hidden="true">{marks[st]}</span> {lab(st)} '
+        f'<b class="sp-count-num">{fmt(counts[st])}</b></span>'
         for st in ("pass", "partial", "fail", "skip")
     )
     out.append(
         f'<div class="sp-counts" role="group" aria-label="规范项状态统计">{cells}'
-        f'<div class="sp-count sp-score"><span class="sp-count-label">规范分 / 100</span>'
-        f'<b class="sp-count-num">{fmt(score)}</b></div></div>'
+        f'<span class="sp-count sp-score">规范分 <b class="sp-count-num">{fmt(score)}</b> / 100</span></div>'
     )
-    out.append('<div class="sp-list">')
+    attention, calm = [], []
     for pos, it in enumerate(items, 1):
+        (attention if status_of(it.get("status")) in ("fail", "partial") else calm).append((pos, it))
+    out.append('<div class="sp-list">')
+    for pos, it in attention:
         st = status_of(it.get("status"))
         raw_title = it.get("title") or it.get("key") or "未命名项"
         key = it.get("key")
         key_html = f'<span class="sp-key">{lab(key)}</span>' if key else ""
         note = it.get("note") or "未提供一句话结论"
-        open_attr = " open" if st in ("fail", "partial") else ""
         out.append(
-            f'<details class="sp-item {st}"{open_attr}>'
+            f'<details class="sp-item {st}"{" open" if st == "fail" else ""}>'
             f'<summary><span class="sp-idx">{pos:02d}</span>'
             f'<span class="sp-main"><span class="sp-title" title="{esc_raw(raw_title)}">{txt(raw_title)}</span>'
             f'{key_html}</span>'
@@ -122,13 +125,21 @@ def render_spec_items(spec_doc, profile=None):
             '<div class="sp-body">'
             f'<p class="sp-note"><b>{lab("note")}：</b>{txt(note)}</p>'
             f'<div class="sp-evidence"><h4>{lab("evidence")}</h4>{evidence_html(it.get("evidence"))}</div>'
-            '<div class="sp-kv">'
+            '<details class="au-raw"><summary>实测 / 预期 / 差值（原始数据）</summary><div class="sp-kv">'
             f'<div><h4>{lab("measured")}</h4><pre tabindex="0">{_pre(it.get("measured"))}</pre></div>'
             f'<div><h4>{lab("expected")}</h4><pre tabindex="0">{_pre(it.get("expected"))}</pre></div>'
             f'<div><h4>{lab("delta")}</h4><pre tabindex="0">{_pre(it.get("delta"))}</pre></div>'
-            '</div></div></details>'
+            '</div></details></div></details>'
         )
     out.append("</div>")
+    if calm:
+        lis = "".join(
+            f'<li><span class="sp-idx">{pos:02d}</span>'
+            f'<span class="sp-title" title="{esc_raw(it.get("title") or it.get("key") or "未命名项")}">'
+            f'{txt(it.get("title") or it.get("key") or "未命名项")}</span>{_pill(it.get("status"))}</li>'
+            for pos, it in calm)
+        out.append(f'<details class="sp-passed"><summary>通过 / 跳过 {fmt(len(calm))} 项（点击展开）</summary>'
+                   f'<ul>{lis}</ul></details>')
 
     matrix = dig(spec_doc, "params", "matrix", default=[]) or []
     if isinstance(matrix, list) and matrix:
@@ -191,10 +202,10 @@ def _threshold_html(row):
 
 
 def render_billing(spec_doc, profile=None):
-    out = [section("05", "计费与缓存",
-                   f"{bi('usage')}字段 · 5m / 1h 写入 · 缓存场景")]
+    out = [fold_start("05", "计费与缓存", f"{bi('usage')}字段 · 5m / 1h 写入 · 缓存场景")]
     if spec_doc is None:
         out.append(empty_panel(NO_SPEC_TEXT, f"{bi('usage')}、缓存写入与场景命中不可用。"))
+        out.append(FOLD_END)
         return "".join(out)
 
     usage = dig(spec_doc, "probes", "usage", default={}) or {}
@@ -300,6 +311,7 @@ def render_billing(spec_doc, profile=None):
     else:
         out.append('<div class="bl-subhead">缓存场景</div>')
         out.append(empty_panel("缓存场景未测", f"{bi('cache.scenarios')} 为空。"))
+    out.append(FOLD_END)
     return "".join(out)
 
 
@@ -358,7 +370,7 @@ def render_audit(audit):
 
     checks = audit.get("checks") if isinstance(audit.get("checks"), list) else []
     if checks:
-        rows = []
+        rows, raws = [], []
         for c in checks:
             if not isinstance(c, dict):
                 continue
@@ -374,17 +386,16 @@ def render_audit(audit):
             else:
                 weighted, score_txt = "未测", _t(s)
             summary = CHECK_SUMMARY.get(str(name).lower(), CHECK_SUMMARY_FALLBACK)
-            raw = (
-                f'<details class="au-raw"><summary>raw note（原始说明）</summary>'
-                f'<pre tabindex="0">{esc_raw(round_text(_mask(c.get("note") or "未测")))}</pre></details>'
-            )
-            rows.append([
-                _gl(name) if name else "未命名检查", fmt(w), score_txt, weighted,
-                f'<p class="au-sum">{esc_raw(summary)}</p>{raw}',
-            ])
-        out.append(table(["检查项", "权重", "得分", "加权得分", "说明"], rows,
-                         cls="table check-table", aligns=["", "r", "r", "r", "note"],
+            name_html = _gl(name) if name else "未命名检查"
+            rows.append([f'<span class="mt-name">{name_html}</span><span class="mt-en">{esc_raw(summary)}</span>',
+                         fmt(w), score_txt, weighted])
+            raws.append(f'<h4>{name_html}</h4><pre tabindex="0">'
+                        f'{esc_raw(round_text(_mask(c.get("note") or "未测")))}</pre>')
+        out.append(table(["检查项", "权重", "得分", "加权得分"], rows,
+                         cls="table check-table", aligns=["", "r", "r", "r"],
                          caption="真实性检查明细"))
+        out.append('<details class="au-raw"><summary>raw note（原始说明）· 逐项</summary>'
+                   f'<div class="au-raws">{"".join(raws)}</div></details>')
     else:
         out.append(empty_panel("未提供 checks", f"{bi('model_audit')} 输出中没有检查项。"))
 

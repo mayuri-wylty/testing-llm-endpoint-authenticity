@@ -479,6 +479,59 @@ def check_carbon_style():
     return fails
 
 
+def check_hierarchy():
+    """Information hierarchy: findings first, secondary sections folded, passed items compacted, less density."""
+    out = os.path.join(OUT_DIR, "report_hier.html")
+    proc = _run_cli(REPORT, AUDIT_FIXTURE, out, spec_path=SPEC_FIXTURE, extra=["--profile", PROFILE_ID])
+    if proc.returncode != 0:
+        return ["层级渲染退出码 %s" % proc.returncode]
+    text = _read_text(out)
+    body = text.split("</style>", 1)[-1]
+    fails = []
+    m = re.search(r'<section class="findings".*?</section>', body, flags=re.S)
+    if not m:
+        fails.append('缺少关键发现区 <section class="findings"')
+    else:
+        block = m.group(0)
+        n = len(re.findall(r'<li[ >]', block))
+        if not 1 <= n <= 4:
+            fails.append("关键发现条数应为 1–4（含“另有 N 项”），实际 %d" % n)
+        if not re.search(r'href="#sec-0[1-6]"', block):
+            fails.append("关键发现应带 #sec-0X 锚点链接")
+        if body.find('class="findings"') > body.find('class="kpi-grid"'):
+            fails.append("关键发现区应位于核心卡之前")
+    for sec in ("02", "03", "05"):
+        if not re.search(r'<details class="fold" id="sec-%s"' % sec, body):
+            fails.append("第 %s 节应为折叠块 <details class=\"fold\" id=\"sec-%s\"" % (sec, sec))
+    if 'class="chips"' in body:
+        fails.append("hero 不应再含 chips 行")
+    if len(re.findall(r'class="kpi ', body)) != 5:
+        fails.append("核心验收卡应仍为 5 张")
+    if "kpi-meta" in body or "kpi-mini" in body:
+        fails.append("核心卡不应再含 kpi-meta / kpi-mini 层")
+    if "sp-item pass" in body:
+        fails.append("通过的规范项不应逐项展开，应合并为“通过 N 项”折叠块")
+    if 'class="sp-passed"' not in body:
+        fails.append("缺少“通过 N 项”折叠块 class=\"sp-passed\"")
+    if len(body.encode("utf-8")) > 50000:
+        fails.append("正文体积 %d 字节，应 ≤ 50000（旧版约 60000）" % len(body.encode("utf-8")))
+    green = _load_json(SPEC_FIXTURE)
+    for it in (green.get("spec") or {}).get("items", []):
+        it["status"] = "pass"
+    gpath = os.path.join(OUT_DIR, "spec_green.json")
+    with open(gpath, "w", encoding="utf-8") as handle:
+        json.dump(green, handle, ensure_ascii=False)
+    gout = os.path.join(OUT_DIR, "report_green.html")
+    proc = _run_cli(REPORT, AUDIT_FIXTURE, gout, spec_path=gpath)
+    if proc.returncode == 0:
+        gtext = _read_text(gout)
+        if 'class="findings"' not in gtext:
+            fails.append("全部通过时仍应渲染关键发现区")
+    else:
+        fails.append("全绿渲染退出码 %s" % proc.returncode)
+    return fails
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -512,6 +565,14 @@ def main():
             _say("  - " + fail)
         return 1
     _say("PASS report_html 参考风格：Carbon 令牌、直角、黑顶栏、细字重、5 列核心卡、配置行齐全")
+
+    fails = check_hierarchy()
+    if fails:
+        _say("FAIL report_html 信息层级：%d 项断言未通过" % len(fails))
+        for fail in fails:
+            _say("  - " + fail)
+        return 1
+    _say("PASS report_html 信息层级：关键发现置顶、次要章节折叠、通过项合并、体积下降")
 
     fails = check_escaping()
     if fails:

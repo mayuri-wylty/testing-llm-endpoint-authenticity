@@ -19,14 +19,14 @@ from common import scrub  # noqa: E402
 from benchmark import load_profile  # noqa: E402
 from sanitize import normalize_audit, normalize_spec  # noqa: E402
 
-from html_components import dig, esc_raw  # noqa: E402
+from html_components import lab, dig, esc_raw  # noqa: E402
 import html_sec_core  # noqa: E402
 import html_sec_spec  # noqa: E402
 from html_theme import (  # noqa: E402
-    CSS, render_footer, render_hero, render_masthead, render_nav, render_theme_toggle_input,
+    CSS, HIERARCHY, render_footer, render_hero, render_masthead, render_nav, render_theme_toggle_input,
 )
-from html_sec_core import render_baseline, render_core, render_metrics  # noqa: E402
-from html_sec_spec import render_audit, render_billing, render_spec_items, render_totals  # noqa: E402
+from html_sec_core import render_baseline, render_core, render_findings, render_metrics  # noqa: E402
+from html_sec_spec import render_audit, render_billing, render_spec_items  # noqa: E402
 
 SK_RE = re.compile(r"sk-[A-Za-z0-9_-]{8,}")
 
@@ -46,16 +46,20 @@ def load_json(path, key):
 
 def build_css():
     """Theme CSS + the optional per-section ``CSS_EXTRA`` strings (missing -> empty)."""
-    return CSS + (getattr(html_sec_core, "CSS_EXTRA", "") or "") + (getattr(html_sec_spec, "CSS_EXTRA", "") or "")
+    return CSS + (getattr(html_sec_core, "CSS_EXTRA", "") or "") + (getattr(html_sec_spec, "CSS_EXTRA", "") or "") + HIERARCHY
 
 
 def render_profile_row(audit, spec_doc):
     """Single-line test configuration strip under the hero (reference report's 接口 / 并发 / ... row)."""
     load = dig(spec_doc, "load") or {}
-    pairs = [("接口", dig(spec_doc, "host")), ("测试时间", dig(spec_doc, "tested_at")),
+    proto = dig(spec_doc, "protocol") or dig(audit, "protocol")
+    prof = dig(spec_doc, "profile") or dig(audit, "profile")
+    pairs = [("协议", proto), ("画像", prof), ("档位", dig(spec_doc, "tier")),
              ("样本数", load.get("samples") if isinstance(load, dict) else None),
              ("成功", load.get("success") if isinstance(load, dict) else None)]
-    cells = "".join('<span>%s<b>%s</b></span>' % (esc_raw(k), esc_raw(v if v not in (None, "") else "未测")) for k, v in pairs)
+    glossed = {"协议", "档位"}  # English enum values get 英文（中文） via the glossary; others are plain data
+    cells = "".join('<span>%s<b>%s</b></span>' % (
+        esc_raw(k), (lab(v) if k in glossed else esc_raw(v)) if v not in (None, "") else "未测") for k, v in pairs)
     return '<div class="profile">%s</div>' % cells
 
 
@@ -70,13 +74,13 @@ def build_report(audit, spec_doc, title, profile=None):
         '<main class="page" id="main">',
         render_hero(audit, spec_doc, title, profile),
         render_profile_row(audit, spec_doc),
+        render_findings(audit, spec_doc, profile),
         render_core(spec_doc, profile),
         render_metrics(spec_doc, profile),
         render_baseline(spec_doc, profile),
         render_spec_items(spec_doc, profile),
         render_billing(spec_doc, profile),
         render_audit(audit),
-        render_totals(spec_doc, profile),
         render_footer(spec_doc, profile),
         "</main></div>",
     ]

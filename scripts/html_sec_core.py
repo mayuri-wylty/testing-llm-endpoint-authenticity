@@ -16,6 +16,8 @@ from html_components import (
     esc,
     esc_raw,
     find_item,
+    FOLD_END,
+    fold_start,
     fmt,
     is_num,
     items_of,
@@ -164,6 +166,55 @@ def _metric_label(row):
     return lab(METRIC_NAME.get(row.get("metric"), row.get("metric")))
 
 
+# --------------------------------------------------------------------------- key findings (L1, above the cards)
+
+def _clip(v, n=48):
+    t = str(v or "").strip()
+    return t if len(t) <= n else t[:n].rstrip() + "…"
+
+
+def render_findings(audit, spec_doc, profile=None):
+    """At most 3 problems, most severe first, each linking to its section; one calm line when nothing is wrong."""
+    cands = []  # (severity, pill_status, pill_text, text_html, anchor)
+    audit = audit if isinstance(audit, dict) else {}
+    if audit.get("hard_fail"):
+        cands.append((0, "fail", "✕ 硬性失败", lab(audit.get("hard_fail")), "06"))
+    if audit.get("usage_inflated") is True:
+        cands.append((1, "fail", "✕ 用量虚高", lab("usage_inflated"), "06"))
+    items = items_of(spec_doc)
+    for it in items:
+        st = it.get("status")
+        if st in ("fail", "partial"):
+            note = it.get("note") or ""
+            title = it.get("title") or it.get("key") or "未命名项"
+            body = txt(_clip(title, 40)) + (f" — {txt(_clip(note, 36))}" if note and st == "fail" else "")
+            cands.append((1 if st == "fail" else 3, st, "✕ 未通过" if st == "fail" else "! 部分通过", body, "04"))
+    for r in _safe_rows(spec_doc, profile):
+        if r.get("verdict") == "bad":
+            name = _metric_label(r) + (f" {_pq(r['pctl'])}" if r.get("pctl") else "")
+            cands.append((2, "fail", "✕ 超限",
+                          f"{name}：" + ov(r.get("official"), r.get("measured"), r.get("unit", "")), "03"))
+    load = dig(spec_doc, "load", default={}) or {}
+    sr = load.get("success_rate")
+    if is_num(sr) and float(sr) < 100.0:
+        cands.append((2, "fail", "✕ 请求失败", f"请求成功率 {val_html(sr, '%')}", "02"))
+    empty = dig(load, "finish", "empty")
+    if is_num(empty) and empty > 0:
+        cands.append((2, "fail", "✕ 空响应", f"出现 {fmt(empty)} 次空响应", "02"))
+    cands.sort(key=lambda c: c[0])
+    rows = []
+    for _, st, ptxt, body, anchor in cands[:3]:
+        rows.append(f'<li><a href="#sec-{anchor}">{pill(st, ptxt)}<span>{body}</span></a></li>')
+    rest = len(cands) - 3
+    if rest > 0:
+        rows.append(f'<li class="more"><a href="#sec-04"><span>另有 {fmt(rest)} 项，见各章节</span></a></li>')
+    if not cands:
+        text = NO_SPEC if spec_doc is None else "未发现异常：规范、基准与请求成功率均无需处理"
+        rows.append(f'<li class="ok"><span>{text}</span></li>')
+    return ('<section class="findings" aria-label="关键发现"><h2 class="findings-title">关键发现</h2>'
+            f'<ol>{"".join(rows)}</ol></section>')
+
+
 # --------------------------------------------------------------------------- section 01
 
 def ratio_groups(item):
@@ -187,16 +238,17 @@ def _ratio_key_metric(key):
 
 
 def core_card(cls, title, sub_html, value_html_str, status_html, ov_html, ov_label, mini, target_html, delta_html):
-    ovline = (f'<div class="kpi-ovline"><span class="kpi-ovlabel">官方 / 实测 · {ov_label}</span>{ov_html}</div>'
-              if ov_html else "")
+    """Slim L2 card: title, big value, status, one comparison line, one target line.
+    ``sub_html`` / ``mini`` / ``delta_html`` are accepted for call-site stability but no longer rendered
+    (their facts live in sections 02-03)."""
+    ovline = f'<div class="kpi-ovline">官方 / 实测 {ov_html}</div>' if ov_html else ""
     return f"""
 <article class="kpi {esc_raw(cls)}">
-  <div class="kpi-head"><h3 class="kpi-title">{title}</h3><div class="kpi-sub">{sub_html}</div></div>
+  <h3 class="kpi-title">{title}</h3>
   <div class="kpi-value">{value_html_str}</div>
   <div class="kpi-status">{status_html}</div>
   {ovline}
-  <div class="kpi-mini">{mini}</div>
-  <dl class="kpi-meta"><dt>目标</dt><dd>{target_html}</dd><dt>差值</dt><dd>{delta_html}</dd></dl>
+  <div class="kpi-target">目标 {target_html}</div>
 </article>"""
 
 
@@ -336,14 +388,26 @@ def render_core(spec_doc, profile=None):
 
 # --------------------------------------------------------------------------- section 02
 
+def _metrics_summary(load):
+    pct = load.get("percentiles") or {}
+    bits = []
+    ttft = (pct.get("ttft_s") or {}).get("p90")
+    if is_num(ttft):
+        bits.append(f"{_pq('p90')} {lab('TTFT')} {fmt(ttft)} s")
+    rpm = (load.get("throughput") or {}).get("rpm")
+    if is_num(rpm):
+        bits.append(f"{lab('RPM')} {fmt(rpm)}")
+    return " · ".join(bits) or "分位数 · 吞吐 · token 合计"
+
+
 def render_metrics(spec_doc, profile=None):
+    from html_sec_spec import render_totals  # local import: spec module is a sibling, no cycle at load time
     load = dig(spec_doc, "load", default={}) or {}
-    note = "分位数 · 吞吐 · token 合计 · 结束原因分布"
-    if spec_doc is None:
-        note = NO_SPEC
-    out = [section("02", "全部指标", note)]
+    note = NO_SPEC if spec_doc is None else _metrics_summary(load)
+    out = [fold_start("02", "全部指标", note)]
     if not load:
         out.append(empty_panel(NO_SPEC, "负载分位数与吞吐指标无法展示。"))
+        out.append(FOLD_END)
         return "".join(out)
 
     pct = load.get("percentiles") or {}
@@ -355,7 +419,7 @@ def render_metrics(spec_doc, profile=None):
         ("output_tps", "Output TPS", "tokens per second", "tok/s"),
     ):
         node = pct.get(key) or {}
-        cells = [f'<span class="mt-name">{lab(label)}</span><span class="mt-en">{lab(en)}</span>']
+        cells = [f'<span class="mt-name">{lab(label)}</span>']
         for q in ("p50", "p90", "p95"):
             v = node.get(q)
             cells.append(val_html(v, unit) if is_num(v) else "未测")
@@ -367,58 +431,39 @@ def render_metrics(spec_doc, profile=None):
 
     throughput = load.get("throughput") or {}
     finish = load.get("finish") or {}
-    empty_n = finish.get("empty")
-    sr = load.get("success_rate")
     tiles = [
-        (lab("RPM"), throughput.get("rpm"), "req/min", ""),
-        (f"总 {lab('TPM')}", throughput.get("tpm"), "tok/min", ""),
-        (lab("input_tpm"), throughput.get("input_tpm"), "tok/min", ""),
-        (lab("output_tpm"), throughput.get("output_tpm"), "tok/min", ""),
-        (lab("samples"), load.get("samples"), "", ""),
-        (lab("success"), load.get("success"), "", ""),
-        (lab("success_rate"), sr, "%",
-         "✕ 未达 100.00 %" if is_num(sr) and float(sr) < 100.0 else ""),
-        (f"{lab('finish')} {lab('empty')}", empty_n, "",
-         "✕ 存在空响应" if is_num(empty_n) and empty_n > 0 else ""),
+        (lab("RPM"), throughput.get("rpm"), "req/min"),
+        (f"总 {lab('TPM')}", throughput.get("tpm"), "tok/min"),
+        (lab("input_tpm"), throughput.get("input_tpm"), "tok/min"),
+        (lab("output_tpm"), throughput.get("output_tpm"), "tok/min"),
     ]
     out.append('<div class="mt-grid">')
-    for label_html, v, unit, warn in tiles:
-        bad = " bad" if warn else ""
-        out.append(
-            f'<div class="mt-tile{bad}"><div class="mt-label">{label_html}</div>'
-            f'<div class="mt-value">{val_html(v, unit) if is_num(v) else "未测"}</div>'
-            f'{f"<div class=\"mt-note\">{esc_raw(warn)}</div>" if warn else ""}</div>'
-        )
+    for label_html, v, unit in tiles:
+        out.append(f'<div class="mt-tile"><div class="mt-label">{label_html}</div>'
+                   f'<div class="mt-value">{val_html(v, unit) if is_num(v) else "未测"}</div></div>')
     out.append("</div>")
 
-    # finish_reason distribution bars (with the text value beside each bar)
-    out.append(f'<div class="sc-subhead">{lab("finish_reason")} 分布<span>条长按最大值缩放；括号内为占比</span></div>')
+    # finish_reason: one stacked bar + one legend line (counts and shares as text)
     fkeys = ("stop", "length", "tool_calls", "empty", "other")
-    vals = [finish.get(k) for k in fkeys if is_num(finish.get(k))]
-    vmax = max(vals) if vals else None
-    total = sum(vals) if vals else 0
-    out.append('<div class="fr">')
-    for key in fkeys:
-        v = finish.get(key)
-        label_txt = bi(key)
-        if is_num(v) and vmax:
-            width = max(0.0, min(100.0, float(v) / float(vmax) * 100.0))
-            warn = " warn" if key == "empty" and v > 0 else ""
-            fill = f'<span class="fr-fill{warn}" style="width:{width:.1f}%"></span>'
-        else:
-            fill = ""
-        if is_num(v):
-            share = f" <small>（{fmt_num(float(v) / total * 100.0)}%）</small>" if total else ""
-            shown = f"{fmt(v)}{share}"
-            alt = f"{label_txt} {fmt(v)}"
-        else:
-            shown, alt = "未测", f"{label_txt} 未测"
-        out.append(
-            f'<div class="fr-row"><div class="fr-label">{lab(key)}</div>'
-            f'<div class="fr-track" role="img" aria-label="{esc_raw(alt)}">{fill}</div>'
-            f'<div class="fr-val">{shown}</div></div>'
-        )
-    out.append("</div>")
+    vals = {k: finish.get(k) for k in fkeys if is_num(finish.get(k))}
+    total = sum(vals.values())
+    out.append(f'<div class="sc-subhead">{lab("finish_reason")} 分布</div>')
+    if total:
+        segs, legend = [], []
+        for key in fkeys:
+            v = vals.get(key)
+            if not v:
+                continue
+            warn = " warn" if key == "empty" else ""
+            segs.append(f'<span class="fr-seg s-{key}{warn}" style="width:{float(v) / total * 100.0:.1f}%"></span>')
+            legend.append(f'<span class="fr-leg"><i class="fr-dot s-{key}{warn}"></i>{lab(key)} '
+                          f'<b>{fmt(v)}</b> <small>（{fmt_num(float(v) / total * 100.0)}%）</small></span>')
+        out.append(f'<div class="fr-stack" role="img" aria-label="{esc_raw(bi("finish_reason"))} 分布">'
+                   f'{"".join(segs)}</div><div class="fr-legend">{"".join(legend)}</div>')
+    else:
+        out.append('<p class="bm-note">未测</p>')
+    out.append(render_totals(spec_doc, profile))
+    out.append(FOLD_END)
     return "".join(out)
 
 
@@ -462,38 +507,10 @@ def _direction_html(row):
     return "↓ 越低越好" if row.get("direction") == "lower" else "↑ 越高越好"
 
 
-def render_baseline(spec_doc, profile=None):
-    date = baseline_source(profile)
-    has_profile = isinstance(profile, dict)
-    note = "官方 / 实测 · 偏差 · 门槛 · 判定"
-    if date:
-        note += f" · 基准存档 {date}"
-    out = [section("03", "官方基准对标", note)]
-    item1 = find_item(items_of(spec_doc), ident=1, key="perf_baseline")
-    if spec_doc is None:
-        out.append(empty_panel(NO_SPEC, "缺少规范审计结果，无法展示官方基准对标。"))
-        return "".join(out)
-
-    rows = [r for r in _safe_rows(spec_doc, profile)
-            if r.get("official") is not None or r.get("measured") is not None]
-    if not rows:
-        out.append(empty_panel("无可对标数据", f"{bi('spec')} {bi('JSON')} 中没有负载分位数或缓存命中率，且未提供官方画像。"))
-        return "".join(out)
-
-    intro = ("偏差 = （实测 − 官方）÷ 官方；延迟类越低越好，吞吐与缓存类越高越好。"
-             "门槛与规范第 1、2、3 项判定口径一致，数值不做二次计算。")
-    if not has_profile:
-        intro += f" 未指定 {bi('profile')} 官方画像文件，官方列显示「未提供」，仅展示实测。"
-    out.append(f'<p class="bm-note">{esc_raw(intro)}</p>')
-    out.append('<div class="bm-legend" aria-hidden="true">'
-               '<span><span class="barpair"><span class="barpair-track"><i class="barpair-o" '
-               'style="width:100%"></i></span></span>官方</span>'
-               '<span><span class="barpair"><span class="barpair-track"><i class="barpair-m" '
-               'style="width:100%"></i></span></span>实测</span>'
-               '<span>每行独立刻度，条长仅用于同行比较</span></div>')
-
-    headers = ["指标", "分位", "官方 / 实测", "偏差", "门槛", "判定", "对比条"]
-    aligns = ["", "", "r", "", "", "c", ""]
+def _bm_groups(rows, has_profile):
+    headers = ["指标", "分位", "官方 / 实测", "偏差", "门槛", "判定"]
+    aligns = ["", "", "r", "", "", "c"]
+    out = []
     for gkey, gtitle in GROUPS:
         grows = [r for r in rows if r.get("group") == gkey]
         if not grows:
@@ -501,10 +518,7 @@ def render_baseline(spec_doc, profile=None):
         body = []
         for r in grows:
             name = _metric_label(r)
-            plain = bi(METRIC_NAME.get(r.get("metric"), CACHE_LABEL.get(r.get("metric"), str(r.get("metric")))))
             pctl = r.get("pctl")
-            bar = bar_pair(r.get("official"), r.get("measured"),
-                           f"{plain} {str(pctl).upper() if pctl else ''}".strip())
             body.append([
                 f'<span class="bm-metric">{name}<span class="bm-dir">{esc_raw(_direction_html(r))}</span></span>',
                 _pq(pctl) if pctl else '<span class="na">—</span>',
@@ -512,17 +526,50 @@ def render_baseline(spec_doc, profile=None):
                 delta_badge(r.get("delta_pct"), r.get("verdict", "unknown")),
                 f'<span class="bm-gate">{_threshold_html(r)}</span>',
                 _verdict_pill(r, has_profile),
-                f'<span class="bm-bar">{bar or "<span class=na>—</span>"}</span>',
             ])
         out.append(f'<div class="bm-group">{table(headers, body, cls="table bm-table", aligns=aligns, caption=gtitle)}</div>')
+    return "".join(out)
+
+
+def render_baseline(spec_doc, profile=None):
+    date = baseline_source(profile)
+    has_profile = isinstance(profile, dict)
+    item1 = find_item(items_of(spec_doc), ident=1, key="perf_baseline")
+    if spec_doc is None:
+        return (fold_start("03", "官方基准对标", NO_SPEC, open_=True)
+                + empty_panel(NO_SPEC, "缺少规范审计结果，无法展示官方基准对标。") + FOLD_END)
+
+    rows = [r for r in _safe_rows(spec_doc, profile)
+            if r.get("official") is not None or r.get("measured") is not None]
+    if not rows:
+        return (fold_start("03", "官方基准对标", "无可对标数据", open_=True)
+                + empty_panel("无可对标数据", f"{bi('spec')} {bi('JSON')} 中没有负载分位数或缓存命中率，且未提供官方画像。")
+                + FOLD_END)
+
+    bad = [r for r in rows if r.get("verdict") == "bad"]
+    judged = [r for r in rows if r.get("verdict") in ("ok", "bad", "warn")]
+    if not has_profile:
+        note = "官方基准未提供，仅展示实测"
+    else:
+        note = f"{fmt(len(bad))} 项超限 / {fmt(len(judged))} 项判定" + (f" · 基准存档 {date}" if date else "")
+    out = [fold_start("03", "官方基准对标", note, open_=bool(bad))]
+    out.append('<p class="bm-note">偏差 = （实测 − 官方）÷ 官方；延迟类越低越好，吞吐与缓存类越高越好。'
+               + ("" if has_profile else f" 未指定 {bi('profile')} 官方画像文件，官方列显示「未提供」。")
+               + "</p>")
+    if bad:
+        out.append('<div class="sc-subhead">需要关注的偏离项</div>')
+        out.append(_bm_groups(bad, has_profile))
+    out.append(f'<details class="bl-rounds"><summary>全部对标明细 · {fmt(len(rows))} 项</summary>'
+               f'{_bm_groups(rows, has_profile)}</details>')
 
     evidence = dig(item1, "evidence", default=[]) or []
     note_txt = dig(item1, "note", default="")
     if evidence or note_txt:
-        out.append('<div class="bm-evidence"><b>证据原文</b>')
+        body = ""
         if evidence:
-            out.append("<ul>" + "".join(f"<li>{txt(line)}</li>" for line in evidence) + "</ul>")
+            body += "<ul>" + "".join(f"<li>{txt(line)}</li>" for line in evidence) + "</ul>"
         if note_txt:
-            out.append(f"<p>{txt(note_txt)}</p>")
-        out.append("</div>")
+            body += f"<p>{txt(note_txt)}</p>"
+        out.append(f'<details class="bl-rounds"><summary>证据原文</summary><div class="bm-evidence">{body}</div></details>')
+    out.append(FOLD_END)
     return "".join(out)

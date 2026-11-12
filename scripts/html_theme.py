@@ -463,6 +463,68 @@ CARBON = r"""
 @media (max-width:760px){.core-grid,.data-grid,.totals,.stats{grid-template-columns:1fr}.layout{padding:16px}.hero h1{font-size:30px}}
 """
 
+HIERARCHY = r"""
+/* ---- hierarchy: findings first, secondary sections folded, calm items compacted ---- */
+.findings{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);padding:16px 24px;margin:0 0 var(--space-5)}
+.findings-title{margin:0 0 8px;font-size:16px;font-weight:600}
+.findings ol{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.findings li a{display:flex;gap:12px;align-items:baseline;color:inherit;text-decoration:none;padding:4px 0}
+.findings li a:hover span:last-child{text-decoration:underline}
+.findings li a .pill{flex:none}
+.findings .ok,.findings .more{color:var(--muted)}
+.fold{border-top:1px solid var(--line);margin-top:var(--space-4)}
+.fold>summary{display:flex;align-items:baseline;gap:12px;cursor:pointer;list-style:none;padding:14px 0}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:"▸";color:var(--muted);flex:none}
+.fold[open]>summary::before{content:"▾"}
+.fold>summary,.sp-passed>summary{padding-left:0}
+.sp-passed>summary{display:flex;gap:.5rem;padding:10px 16px}
+.sp-passed>summary::before{content:"▸"}
+.sp-passed[open]>summary::before{content:"▾"}
+.sp-item>summary::before,.sp-matrix>summary::before,.bl-rounds>summary::before,.au-raw>summary::before,.fold>summary::before,.sp-passed>summary::before{position:static;transform:none;left:auto;top:auto;width:auto;height:auto;background:none;border:0;border-radius:0;color:var(--muted)}
+.fold>summary .section-index,.sp-idx{flex:none;min-width:2ch;white-space:nowrap}
+.au-raw>summary{white-space:normal;min-width:0}
+.fold>summary h2{margin:0;font-size:20px;font-weight:400}
+.fold>summary .section-note{margin-left:auto;color:var(--muted);font-size:14px;text-align:right}
+.fold>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fold-body{padding-bottom:var(--space-4)}
+.section-heading{margin:var(--space-5) 0 var(--space-3)}
+.kpi-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.kpi{border:0;border-top:3px solid transparent;padding:18px 20px;gap:8px}
+.kpi.pass{border-top-color:var(--ok)}
+.kpi.partial{border-top-color:var(--warn)}
+.kpi.fail{border-top-color:var(--bad)}
+.kpi-title{font-size:15px;font-weight:500}
+.kpi-value{font-weight:300;font-size:40px;letter-spacing:-1px}
+.kpi-value small{white-space:nowrap}
+.kpi-ovline{border-top:0;padding-top:0;font-size:14px;color:var(--muted)}
+.kpi-target{font-size:13px;color:var(--muted)}
+.sp-counts{display:flex;flex-wrap:wrap;gap:6px 24px;margin:0 0 var(--space-3)}
+.sp-count{display:inline-flex;flex-direction:row;align-items:baseline;gap:6px;padding:0;background:transparent;border:0;color:var(--muted)}
+.sp-count.partial,.sp-count.fail{background:transparent}
+.sp-count-num{font-size:20px;font-weight:500}
+.sp-passed{margin-top:var(--space-3);background:var(--surface);border:1px solid var(--line)}
+.sp-passed>summary{padding:10px 16px;cursor:pointer;color:var(--muted)}
+.sp-passed ul{list-style:none;margin:0;padding:0 16px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:4px 24px}
+.sp-passed li{display:flex;gap:10px;align-items:baseline;min-width:0}
+.sp-passed .sp-title{font-weight:400;min-width:0}
+.sp-passed .pill{margin-left:auto;flex:none}
+.sp-body .au-raw{margin-top:0}
+.fr-stack{display:flex;height:12px;background:var(--surface-2);overflow:hidden}
+.fr-seg.s-stop,.fr-dot.s-stop{background:var(--ok)}
+.fr-seg.s-length,.fr-dot.s-length{background:var(--warn)}
+.fr-seg.s-tool_calls,.fr-dot.s-tool_calls{background:var(--accent)}
+.fr-seg.s-other,.fr-dot.s-other{background:var(--muted)}
+.fr-seg.s-empty,.fr-dot.s-empty{background:var(--bad)}
+.fr-legend{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:8px;font-size:14px}
+.fr-dot{display:inline-block;width:10px;height:10px;margin-right:6px}
+.au-raws h4{margin:12px 12px 4px;font-size:.9rem;color:var(--muted)}
+.bl-rounds{margin-top:var(--space-3)}
+@media (max-width:1279px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.kpi-grid{grid-template-columns:1fr}.fold>summary{flex-wrap:wrap}.fold>summary .section-note{margin-left:0;text-align:left;flex-basis:100%}}
+@media print{details.fold::details-content,.sp-passed::details-content,.bl-rounds::details-content{content-visibility:visible;display:block}}
+"""
+
 CSS = (
     ":root{" + _LIGHT_VARS + "}"
     + "@media (prefers-color-scheme: dark){:root:not(:has(#theme-toggle:checked)){" + _DARK_VARS + "}}"
@@ -550,26 +612,6 @@ def render_hero(audit, spec_doc, title, profile=None):
     model = dig(spec_doc, "model") or dig(audit, "model") or "未测"
     host = dig(spec_doc, "host") or "未测"
     tested_at = dig(spec_doc, "tested_at") or "未测"
-    protocol = dig(spec_doc, "protocol") or dig(audit, "protocol") or "未测"
-    profile_id = (dig(spec_doc, "profile") or dig(audit, "profile")
-                  or (profile.get("id") if isinstance(profile, dict) else None) or "未测")
-    tier = dig(spec_doc, "tier") or "未测"
-
-    item5 = find_item(items_of(spec_doc), ident=5)
-    fixed = dig(item5, "expected", "fixed", default={}) or {}
-    chips = [
-        f'<span class="chip">协议<b>{lab(protocol)}</b></span>',
-        f'<span class="chip">画像<b>{esc_raw(profile_id)}</b></span>',
-        f'<span class="chip">测试档位<b>{lab(tier)}</b></span>',
-    ]
-    load = dig(spec_doc, "load", default={}) or {}
-    sr = load.get("success_rate")
-    if is_num(sr):
-        chips.append(f'<span class="chip">请求成功率<b>{val_html(sr, "%")}</b></span>')
-    if isinstance(fixed, dict) and fixed:
-        for k, v in fixed.items():
-            chips.append(f'<span class="chip">{lab(k)}<b>{esc(v)}</b></span>')
-
     score = audit.get("score")
     verdict = audit.get("verdict") or "未测"
     vcls = verdict_class(audit.get("verdict"))
@@ -605,7 +647,6 @@ def render_hero(audit, spec_doc, title, profile=None):
     return f"""
 <section class="hero" id="top" aria-labelledby="report-title">
   <div class="hero-card">
-    <div class="eyebrow">{lab("API")} 实测 · 规范符合度 · 渠道真实性</div>
     <h1 id="report-title">{esc_raw(title)}</h1>
     <div class="verdict-line"><span class="vbadge {vcls}">结论：{lab(verdict)}</span></div>
     <div class="model-line">
@@ -613,7 +654,6 @@ def render_hero(audit, spec_doc, title, profile=None):
       <span>{esc_raw(host)}</span><span class="divider"></span>
       <span>{esc_raw(tested_at)}</span>
     </div>
-    <div class="chips">{''.join(chips)}</div>
   </div>
   <div class="stats">
     {_stat("真实性分", auth_value, auth_cap, _VCLS_TO_STAT.get(vcls, ""))}
