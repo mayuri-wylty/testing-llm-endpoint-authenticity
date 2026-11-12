@@ -63,6 +63,20 @@ python scripts/profile.py kimi-k3.1-pro --override targets.spec_score_min=85
 
 `profile.guard_base(profile, base)` 在第一次请求前调用：命中 `official_hosts`（含子域）直接 `sys.exit("refusing to call the official baseline endpoint; use a channel URL")`。**没有覆盖开关。** `model_audit.py --profile`、`spec_audit.py`、`load_test.py` 三条入口都必须先过守卫。
 
+## 报告如何读取画像
+
+`report_html.py` / `report_md.py` 通过 `--profile <id|path>` 读取画像（只读，不改画像，不请求任何端点），用来给"官方 / 实测"并排展示提供官方值与达标线。实测值取自 spec JSON 的 `load.percentiles` 与 `cache.scenarios`。没传 `--profile` 时官方值显示"未提供"，报告照常生成。
+
+| 画像字段 | 报告中的用途 |
+|---|---|
+| `baseline.percentiles`（实测模型命中 `baseline.percentiles_by_model` 时以后者为准） | 官方 `ttft_s` / `latency_s` / `tpot_ms` / `output_tps` 的 p50 / p90 / p95，与实测分位数逐项对照，给出偏差与判定 |
+| `baseline.cache` | 官方缓存命中率（相同 20k / 多轮 12k / 短 1k），与 `cache.scenarios.*.hit_rate_pct` 对照 |
+| `targets` | 判定门槛：`perf_p50_ratio_max` / `perf_p90_ratio_max`（实测÷官方）、`ttft_p90_max_s`、`cache_hit_min_pct`；字段缺失时沿用 `spec_checks` 的默认值 |
+| `baseline_source.collected` | 页脚与概览中的"官方基准存档日期" |
+
+- 官方值只来自画像里的存档数字，报告不重算基准；画像缺某个分位数或场景时，该行官方值显示"未提供"，不补零、不估算。
+- 本节只描述读取方式，上文的 schema 与下文的 spec 输出契约均未改动。
+
 ## 冻结输出：`spec_audit.py` JSON（version 1）
 
 实现阶段已冻结；Wave 1 各成员不得改结构。`profiles/README.md` 是唯一契约来源。

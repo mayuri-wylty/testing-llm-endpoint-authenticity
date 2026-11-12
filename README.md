@@ -4,7 +4,7 @@
 
 本项目是一个 Claude Code 技能，用于检测第三方大模型接口（包括各类中转站、转售渠道）是否真正提供了其所宣称的模型，并尽可能判断接口背后实际使用的服务方。支持三种协议：OpenAI `/chat/completions`、Anthropic `/v1/messages`、OpenAI `/responses`（`--protocol chat|messages|responses`）。
 
-在此基础上，技能还提供两套附加能力：用内置画像（`profiles/`）核对渠道对官方接口规范的遵守程度（`scripts/spec_audit.py`，15 项、独立 `spec_score`），以及把真实性与规范结果渲染成一页单文件 HTML 报告（`scripts/report_html.py`）。
+在此基础上，技能还提供两套附加能力：用内置画像（`profiles/`）核对渠道对官方接口规范的遵守程度（`scripts/spec_audit.py`，15 项、独立 `spec_score`），以及把真实性与规范结果渲染成一页单文件 HTML 报告（`scripts/report_html.py`）和同源的 Markdown 报告（`scripts/report_md.py`）。
 
 > **当前为评分 v2（`scoring_version=2`）**：权重与检测项已调整，与早期版本的分数不可比较。全部功能目前只在模拟接口（`tests/mock_llm.py`）上验证，尚未经过真实接口的系统校准，请把分数当作证据而非定论。
 
@@ -92,11 +92,22 @@
 - 证据不全的项只能记"部分"：100MB 视频、58 分钟缓存回读、未实跑的长生成存活验证，均不得记为通过。
 - 标准档约 136 次生成请求（负载 60 + 缓存 19 + 规范固定探测 57），运行前会先说明；`spec_audit.py --dry-run` / `load_test.py --print-plan` 可先查看计划且不发送请求。60 个样本的 p95 置信度低，报告会注明。
 
-### 五、单文件 HTML 报告（`scripts/report_html.py`）
+### 五、报告生成（`scripts/report_html.py`、`scripts/report_md.py`）
 
-把真实性 JSON（`model_audit.py --out`）与规范 JSON（`spec_audit.py --out`）渲染成一个 HTML 文件：Carbon 设计语言、系统字体、无外部资源、无 JS，可离线打开和转发。内容依次为：评分概览（真实性、规范符合度、性能达标、成功率）、核心标准（官方基准 p50/p90/p95 偏差、TTFT、缓存、成功率、TPOT）、全部指标、官方基准对标、15 项规范清单（证据折叠）、计费与缓存、真实性与渠道。缺失数据渲染为"未测"，不补零；渲染前对两份 JSON 再做 `scrub`，所有动态字符串 `html.escape`，报告中只出现主机名。
+两个脚本参数相同，输入为真实性 JSON（`model_audit.py --out`）、规范 JSON（`spec_audit.py --out`）和画像（`--profile`）：
 
-Markdown 报告（`report-template.md`）仍然保留，二者结论必须一致。
+```bash
+python scripts/report_html.py --audit A.json --spec S.json --profile kimi-k3.1-pro --out X.html [--title T]
+python scripts/report_md.py   --audit A.json --spec S.json --profile kimi-k3.1-pro --out X.md   [--title T]
+```
+
+`--spec`、`--profile` 可省略：缺少时对应章节写"未测"或"未提供"，不报错。`--profile` 取画像 JSON（`profiles/*.json`）里的 `baseline` / `targets` 作官方值，只读存档，不调用官方端点。
+
+**HTML**：单文件、零依赖、无外部资源、无 JS，可离线打开和转发；浅色 / 深色主题（跟随系统，另有纯 CSS 切换）、响应式、可打印；章节导航 01 至 06，失败与部分通过的项默认展开。内容依次为：评分概览（真实性、规范符合度、性能达标、成功率）、核心标准（官方基准 p50/p90/p95 偏差、TTFT、缓存、成功率、TPOT）、全部指标、官方基准对标（每项"官方 / 实测"、偏差与判定）、15 项规范清单（证据折叠）、计费与缓存、真实性与渠道。渲染前对两份 JSON 再做 `scrub`，所有动态字符串 `html.escape`，报告中只出现主机名。
+
+**Markdown**：由 `report_md.py` 确定性生成，不再由 agent 手填；章节结构沿用 `report-template.md`（正文通俗化，附录放技术明细），数字与"官方 / 实测"表与 HTML 一致。agent 只负责核对，并补写脚本标为"未判定 / 未提供"的人工项：渠道真伪与渠道来源、`--claim` 的用户陈述、注入与思考锁定的手动检查结果。
+
+**展示规范（两种格式相同）**：所有非整数一律固定 2 位小数（四舍五入，整数保持整数）；审计、规范 JSON 的原始数据保持全精度，只在展示层取整。HTML 中的英文一律写成"English（中文）"，原始数据 `<pre>`、模型名、主机名、URL 与单位除外；检查项 `note` 里的自由英文放在折叠的"原始说明"中。缺失数据一律写"未测"，不补零。
 
 ## 安装
 
@@ -130,9 +141,13 @@ LLM_API_KEY=sk-... python scripts/model_audit.py \
 LLM_API_KEY=sk-... python scripts/spec_audit.py \
   --profile kimi-k3.1-pro --base https://host/v1 --tier standard --out kimi-spec.json
 
-# 单文件 HTML 报告（真实性 + 规范）
+# 单文件 HTML 报告（真实性 + 规范 + 官方基准）
 python scripts/report_html.py \
-  --audit kimi-audit.json --spec kimi-spec.json --out kimi-report.html
+  --audit kimi-audit.json --spec kimi-spec.json --profile kimi-k3.1-pro --out kimi-report.html
+
+# Markdown 报告（同参数，脚本生成）
+python scripts/report_md.py \
+  --audit kimi-audit.json --spec kimi-spec.json --profile kimi-k3.1-pro --out kimi-report.md
 
 # 错误信息探测（可多次使用 --model 以对比不同模型）
 LLM_API_KEY=sk-... python scripts/error_probe.py \
@@ -158,7 +173,11 @@ python tests/selftest_perf_stats.py        # 分位数 / TPOT / TPM 纯函数
 python tests/selftest_spec.py              # 规范套件（fixture 模式：score=89）
 python tests/selftest_spec.py --live-mock  # good mock 端到端（12 pass + 7/8/12 partial，score 92）
 python tests/selftest_spec.py --bad        # 规范套件（mock bad 模式，按预期失败）
-python tests/selftest_report_html.py       # HTML 渲染结构、转义、无外链、无 key
+python tests/selftest_report_html.py       # HTML 渲染：结构、转义、无外链/无 JS、2 位小数、英文补中文、官方/实测、主题与打印
+python tests/selftest_report_md.py         # md 渲染：2 位小数、15 项与分数、官方/实测表、降级、转义与表格列数
+python tests/selftest_fmt.py               # 展示层取整 fmt_num / round_text / round_obj
+python tests/selftest_i18n.py              # 英文补中文词表与 lint_html
+python tests/selftest_benchmark.py         # 官方/实测对标行与判定（纯数据）
 ```
 
 ## 运行环境
